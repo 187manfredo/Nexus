@@ -7,19 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
-<!-- ======== FIREBASE SDK ======== -->
-<!-- ⚠️ FIREBASE SETUP: Trage hier deine eigenen Zugangsdaten ein.
-     Solange FIREBASE_ENABLED = false ist, läuft die Seite nur mit localStorage.
-     Anleitung: siehe unten im Script-Kommentar. -->
+
 <script type="module">
 
-  // ============================================================
-  // SCHRITT 1: Setze dies auf true sobald du die Config eingetragen hast
+ 
   const FIREBASE_ENABLED = true;
-  // ============================================================
 
-  // SCHRITT 2: Ersetze alle Werte mit deinen Firebase-Zugangsdaten
-  // (aus Firebase Console → Projekteinstellungen → Deine Apps)
   const firebaseConfig = {
     apiKey:            "AIzaSyDNvXqBoOaai-TW4Pt1p1__AENUy8qlfUM",
     authDomain:        "nexus-681c4.firebaseapp.com",
@@ -28,7 +21,7 @@
     messagingSenderId: "832080412197",
     appId:             "1:832080412197:web:7ea3c10e337e95bedfc9cc"
   };
-  // ============================================================
+ 
 
   if(!FIREBASE_ENABLED){
     // Firebase deaktiviert → Seite läuft normal mit localStorage
