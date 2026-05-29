@@ -8,12 +8,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
 <!-- ======== FIREBASE SDK ======== -->
-<!-- SCHRITT 1: Ersetze die Werte unten mit deinen eigenen Firebase-Zugangsdaten -->
+<!-- ⚠️ FIREBASE SETUP: Trage hier deine eigenen Zugangsdaten ein.
+     Solange FIREBASE_ENABLED = false ist, läuft die Seite nur mit localStorage.
+     Anleitung: siehe unten im Script-Kommentar. -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  // ⚠️ DEINE FIREBASE CONFIG — aus Firebase Console kopieren:
+  // ============================================================
+  // SCHRITT 1: Setze dies auf true sobald du die Config eingetragen hast
+  const FIREBASE_ENABLED = false;
+  // ============================================================
+
+  // SCHRITT 2: Ersetze alle Werte mit deinen Firebase-Zugangsdaten
+  // (aus Firebase Console → Projekteinstellungen → Deine Apps)
   const firebaseConfig = {
     apiKey:            "AIzaSyDNvXqBoOaai-TW4Pt1p1__AENUy8qlfUM",
     authDomain:        "nexus-681c4.firebaseapp.com",
@@ -22,62 +28,74 @@
     messagingSenderId: "832080412197",
     appId:             "1:832080412197:web:7ea3c10e337e95bedfc9cc"
   };
+  // ============================================================
 
-  const app = initializeApp(firebaseConfig);
-  const db  = getFirestore(app);
-
-  // Firestore-Dokument: "nexus/main"
-  const REF = doc(db, 'nexus', 'main');
-
-  // Daten laden & live synchronisieren
-  async function fbLoad(){
+  if(!FIREBASE_ENABLED){
+    // Firebase deaktiviert → Seite läuft normal mit localStorage
+    window.fbSave = null;
+    window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: null }));
+    console.info('NEXUS: Firebase deaktiviert, nutze localStorage.');
+  } else {
     try {
-      const snap = await getDoc(REF);
-      if(snap.exists()){
-        // Merge: Firebase-Daten überschreiben localStorage
-        const remote = snap.data();
-        window._nexusData = remote;
-        window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: remote }));
-      } else {
-        // Erstes Mal: lokale Daten nach Firebase schreiben
-        window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: null }));
+      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+      const { getFirestore, doc, getDoc, setDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+
+      const app = initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
+      const REF = doc(db, 'nexus', 'main');
+
+      // Daten laden
+      async function fbLoad(){
+        try {
+          const snap = await getDoc(REF);
+          if(snap.exists()){
+            window._nexusData = snap.data();
+            window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: snap.data() }));
+          } else {
+            window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: null }));
+          }
+        } catch(e){
+          console.warn('Firebase Ladefehler, nutze localStorage:', e);
+          window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: null }));
+        }
       }
-    } catch(e){
-      console.warn('Firebase nicht erreichbar, nutze localStorage:', e);
+
+      // Live-Updates wenn ein anderer User etwas ändert
+      onSnapshot(REF, (snap) => {
+        if(snap.exists() && window._nexusReady){
+          const remote = snap.data();
+          if(window.nexusData){
+            remote.games = (remote.games||[]).map((rg, i) => {
+              const lg = (window.nexusData.games||[])[i];
+              if(lg && lg.playFile) rg.playFile = lg.playFile;
+              return rg;
+            });
+          }
+          window.nexusData = remote;
+          if(window.nexusOnRemoteUpdate) window.nexusOnRemoteUpdate(remote);
+        }
+      });
+
+      // Speicherfunktion
+      window.fbSave = async function(dataObj){
+        try {
+          const toSave = JSON.parse(JSON.stringify(dataObj));
+          (toSave.games||[]).forEach(g => { delete g.playFile; });
+          await setDoc(REF, toSave);
+        } catch(e){
+          console.warn('Firebase Speicherfehler:', e);
+        }
+      };
+
+      fbLoad();
+      console.info('NEXUS: Firebase verbunden ✅');
+
+    } catch(e) {
+      console.warn('Firebase konnte nicht geladen werden, nutze localStorage:', e);
+      window.fbSave = null;
       window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: null }));
     }
   }
-
-  // Live-Updates: wenn ein anderer User Daten ändert → sofort sehen
-  onSnapshot(REF, (snap) => {
-    if(snap.exists() && window._nexusReady){
-      const remote = snap.data();
-      // Spieler-Dateien (base64) lokal behalten — zu groß für Firestore
-      if(window.nexusData){
-        remote.games = (remote.games||[]).map((rg, i) => {
-          const lg = (window.nexusData.games||[])[i];
-          if(lg && lg.playFile) rg.playFile = lg.playFile;
-          return rg;
-        });
-      }
-      window.nexusData = remote;
-      if(window.nexusOnRemoteUpdate) window.nexusOnRemoteUpdate(remote);
-    }
-  });
-
-  // Firebase-Speicherfunktion global verfügbar machen
-  window.fbSave = async function(dataObj){
-    try {
-      // playFile (base64) NICHT in Firestore speichern — zu groß & lokal genug
-      const toSave = JSON.parse(JSON.stringify(dataObj));
-      (toSave.games||[]).forEach(g => { delete g.playFile; });
-      await setDoc(REF, toSave);
-    } catch(e){
-      console.warn('Firebase-Speicherfehler, nur localStorage:', e);
-    }
-  };
-
-  fbLoad();
 <\/script>
 <style>
   :root {
