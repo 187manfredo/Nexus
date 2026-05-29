@@ -1,0 +1,2754 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<!-- ======== FIREBASE SDK ======== -->
+<!-- SCHRITT 1: Ersetze die Werte unten mit deinen eigenen Firebase-Zugangsdaten -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ⚠️ DEINE FIREBASE CONFIG — aus Firebase Console kopieren:
+  const firebaseConfig = {
+    apiKey:            "DEIN_API_KEY",
+    authDomain:        "DEIN_PROJECT.firebaseapp.com",
+    projectId:         "DEIN_PROJECT_ID",
+    storageBucket:     "DEIN_PROJECT.appspot.com",
+    messagingSenderId: "DEINE_SENDER_ID",
+    appId:             "DEINE_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // Firestore-Dokument: "nexus/main"
+  const REF = doc(db, 'nexus', 'main');
+
+  // Daten laden & live synchronisieren
+  async function fbLoad(){
+    try {
+      const snap = await getDoc(REF);
+      if(snap.exists()){
+        // Merge: Firebase-Daten überschreiben localStorage
+        const remote = snap.data();
+        window._nexusData = remote;
+        window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: remote }));
+      } else {
+        // Erstes Mal: lokale Daten nach Firebase schreiben
+        window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: null }));
+      }
+    } catch(e){
+      console.warn('Firebase nicht erreichbar, nutze localStorage:', e);
+      window.dispatchEvent(new CustomEvent('nexus-firebase-ready', { detail: null }));
+    }
+  }
+
+  // Live-Updates: wenn ein anderer User Daten ändert → sofort sehen
+  onSnapshot(REF, (snap) => {
+    if(snap.exists() && window._nexusReady){
+      const remote = snap.data();
+      // Spieler-Dateien (base64) lokal behalten — zu groß für Firestore
+      if(window.nexusData){
+        remote.games = (remote.games||[]).map((rg, i) => {
+          const lg = (window.nexusData.games||[])[i];
+          if(lg && lg.playFile) rg.playFile = lg.playFile;
+          return rg;
+        });
+      }
+      window.nexusData = remote;
+      if(window.nexusOnRemoteUpdate) window.nexusOnRemoteUpdate(remote);
+    }
+  });
+
+  // Firebase-Speicherfunktion global verfügbar machen
+  window.fbSave = async function(dataObj){
+    try {
+      // playFile (base64) NICHT in Firestore speichern — zu groß & lokal genug
+      const toSave = JSON.parse(JSON.stringify(dataObj));
+      (toSave.games||[]).forEach(g => { delete g.playFile; });
+      await setDoc(REF, toSave);
+    } catch(e){
+      console.warn('Firebase-Speicherfehler, nur localStorage:', e);
+    }
+  };
+
+  fbLoad();
+<\/script>
+<style>
+  :root {
+    --bg:        #04040c;
+    --bg2:       #080814;
+    --bg3:       #0d0d1e;
+    --bg4:       #131328;
+    --bg5:       #181830;
+    --accent:    #00e5ff;
+    --accent2:   #7c3aed;
+    --accent3:   #ff4757;
+    --accent4:   #00ff88;
+    --text:      #dde0f0;
+    --text2:     #9a9abf;
+    --muted:     #4a4a6a;
+    --border:    #1a1a30;
+    --border2:   #242440;
+    --border3:   #2e2e50;
+    --win-header:#060612;
+    --win-bg:    #07070f;
+    --success:   #00ff88;
+    --danger:    #ff4757;
+    --warning:   #ffa502;
+    --taskbar:   #04040c;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:'Rajdhani',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    height:100vh;
+    overflow:hidden;
+    user-select:none;
+  }
+
+  /* ======== DESKTOP ======== */
+  #desktop{
+    width:100vw; height:100vh;
+    position:relative; overflow:hidden;
+    background:
+      radial-gradient(ellipse at 10% 90%, rgba(124,58,237,0.18) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 10%, rgba(0,229,255,0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(0,255,136,0.03) 0%, transparent 70%),
+      var(--bg);
+  }
+  /* animated grid */
+  #desktop::before{
+    content:'';
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size:60px 60px;
+    pointer-events:none; z-index:0;
+    animation:gridDrift 60s linear infinite;
+  }
+  @keyframes gridDrift{from{background-position:0 0}to{background-position:60px 60px}}
+  #desktop::after{
+    content:'';
+    position:absolute; inset:0;
+    background:radial-gradient(ellipse at center, transparent 30%, rgba(4,4,12,0.7) 100%);
+    pointer-events:none; z-index:0;
+  }
+  /* scan line */
+  #scanline{
+    position:fixed; top:-100%; left:0; right:0;
+    height:200%;
+    background:linear-gradient(transparent 50%, rgba(0,229,255,0.012) 50%);
+    background-size:100% 3px;
+    pointer-events:none; z-index:9998;
+    animation:scanDown 8s linear infinite;
+    opacity:0.4;
+  }
+  @keyframes scanDown{from{transform:translateY(-50%)}to{transform:translateY(50%)}}
+
+  /* ======== DESKTOP ICONS ======== */
+  .desktop-icons{
+    position:absolute; top:24px; left:22px;
+    display:flex; flex-direction:column; gap:8px; z-index:1;
+  }
+  .d-icon{
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    width:80px; cursor:pointer;
+    padding:10px 4px; border-radius:12px;
+    border:1px solid transparent;
+    transition:all 0.25s;
+    position:relative;
+  }
+  .d-icon:hover{
+    background:rgba(0,229,255,0.06);
+    border-color:rgba(0,229,255,0.15);
+    transform:translateY(-2px);
+  }
+  .d-icon:hover .d-icon-img{box-shadow:0 0 20px rgba(0,229,255,0.2);}
+  .d-icon:active{transform:scale(0.94);}
+  .d-icon.double-click{background:rgba(0,229,255,0.12);border-color:rgba(0,229,255,0.3);}
+  .d-icon-img{
+    width:50px; height:50px;
+    border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:24px;
+    border:1px solid var(--border2);
+    transition:all 0.25s;
+    position:relative; overflow:hidden;
+  }
+  .d-icon-img::before{
+    content:'';
+    position:absolute; top:0; left:-100%;
+    width:60%; height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent);
+    transition:left 0.4s;
+  }
+  .d-icon:hover .d-icon-img::before{left:150%;}
+  .d-icon span{
+    font-size:11px; color:var(--text); text-align:center;
+    text-shadow:0 1px 8px rgba(0,0,0,0.95);
+    font-weight:600; letter-spacing:0.5px;
+  }
+
+  /* ======== TASKBAR ======== */
+  #taskbar{
+    position:fixed; bottom:0; left:0; right:0;
+    height:52px;
+    background:rgba(4,4,12,0.98);
+    border-top:1px solid var(--border2);
+    display:flex; align-items:center; padding:0 16px; gap:4px;
+    z-index:9999;
+    backdrop-filter:blur(40px);
+    box-shadow:0 -2px 40px rgba(0,0,0,0.7), 0 -1px 0 rgba(0,229,255,0.04);
+  }
+  .tb-separator{width:1px;height:26px;background:var(--border2);margin:0 6px;flex-shrink:0;}
+  .tb-btn{
+    display:flex; align-items:center; gap:7px;
+    padding:7px 13px;
+    background:transparent;
+    border:1px solid transparent;
+    border-radius:8px;
+    color:var(--muted);
+    font-family:'Rajdhani',sans-serif;
+    font-size:12px; font-weight:600;
+    letter-spacing:0.5px;
+    cursor:pointer; transition:all 0.2s;
+    text-transform:uppercase;
+    position:relative;
+  }
+  .tb-btn:hover{background:var(--bg5);border-color:var(--border2);color:var(--text);}
+  .tb-btn.active{
+    border-color:rgba(0,229,255,0.35);
+    color:var(--accent);
+    background:rgba(0,229,255,0.06);
+    box-shadow:inset 0 0 12px rgba(0,229,255,0.04);
+  }
+  .tb-btn.active::after{
+    content:'';
+    position:absolute; bottom:-1px; left:50%; transform:translateX(-50%);
+    width:22px; height:2px;
+    background:var(--accent); border-radius:1px 1px 0 0;
+    box-shadow:0 0 10px var(--accent), 0 0 20px rgba(0,229,255,0.5);
+  }
+  #taskbar-clock{
+    font-family:'Share Tech Mono',monospace;
+    font-size:12px; color:var(--text2);
+    letter-spacing:2px;
+    padding:5px 11px;
+    border:1px solid var(--border2); border-radius:6px;
+    background:rgba(0,0,0,0.4);
+  }
+  #admin-indicator{
+    display:none; align-items:center; gap:6px;
+    padding:4px 10px;
+    background:rgba(124,58,237,0.1);
+    border:1px solid rgba(124,58,237,0.3);
+    border-radius:6px;
+    font-size:11px; color:#b09eff;
+    font-weight:600; letter-spacing:0.5px; flex-shrink:0;
+  }
+  #admin-indicator.show{display:flex;}
+  .taskbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  #guest-badge{
+    display:none; align-items:center; gap:5px;
+    padding:4px 10px;
+    background:rgba(255,165,2,0.08);
+    border:1px solid rgba(255,165,2,0.25);
+    border-radius:6px; font-size:11px; color:var(--warning);
+    font-weight:600; letter-spacing:0.3px;
+  }
+  #guest-badge.show{display:flex;}
+  #user-badge{
+    display:none; align-items:center; gap:5px;
+    padding:4px 10px;
+    background:rgba(0,229,255,0.08);
+    border:1px solid rgba(0,229,255,0.25);
+    border-radius:6px; font-size:11px; color:var(--accent);
+    font-weight:600; letter-spacing:0.3px;
+  }
+  #user-badge.show{display:flex;}
+  .tb-action-btn{
+    padding:5px 11px;
+    background:transparent; border:1px solid var(--border2);
+    border-radius:6px; color:var(--muted);
+    font-family:'Rajdhani',sans-serif; font-size:11px;
+    font-weight:600; cursor:pointer;
+    letter-spacing:0.3px; text-transform:uppercase; transition:all 0.2s;
+  }
+  .tb-action-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .tb-action-btn.danger{border-color:rgba(255,71,87,0.3);color:var(--danger);}
+  .tb-action-btn.danger:hover{background:rgba(255,71,87,0.08);border-color:var(--danger);}
+
+  /* ======== WINDOWS ======== */
+  .window{
+    position:absolute;
+    background:var(--win-bg);
+    border:1px solid var(--border2);
+    border-radius:14px; overflow:hidden;
+    box-shadow:
+      0 32px 100px rgba(0,0,0,0.8),
+      0 0 0 0.5px rgba(255,255,255,0.03),
+      inset 0 1px 0 rgba(255,255,255,0.03);
+    display:none; flex-direction:column;
+    min-width:320px; min-height:220px; z-index:100;
+  }
+  .window.open{display:flex; animation:winOpen 0.18s cubic-bezier(0.22,1,0.36,1);}
+  @keyframes winOpen{
+    from{opacity:0;transform:scale(0.95) translateY(6px);}
+    to{opacity:1;transform:scale(1) translateY(0);}
+  }
+  .window.focused{
+    z-index:200;
+    border-color:rgba(0,229,255,0.18);
+    box-shadow:
+      0 32px 100px rgba(0,0,0,0.85),
+      0 0 0 0.5px rgba(0,229,255,0.08),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .win-header{
+    background:var(--win-header);
+    padding:11px 16px;
+    display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid var(--border);
+    cursor:grab; flex-shrink:0;
+    position:relative; overflow:hidden;
+  }
+  .win-header::after{
+    content:'';
+    position:absolute; bottom:0; left:0; right:0;
+    height:1px;
+    background:linear-gradient(90deg, transparent, rgba(0,229,255,0.15), transparent);
+  }
+  .win-header:active{cursor:grabbing;}
+  .win-controls{display:flex; gap:7px;}
+  .win-ctrl{
+    width:13px; height:13px; border-radius:50%;
+    cursor:pointer; border:none;
+    transition:filter 0.15s, transform 0.1s; position:relative;
+  }
+  .win-ctrl:hover{filter:brightness(1.3); transform:scale(1.12);}
+  .win-ctrl.close{background:#ff5f57;}
+  .win-ctrl.min{background:#febc2e;}
+  .win-ctrl.max{background:#28c840;}
+  .win-title{
+    font-family:'Rajdhani',sans-serif;
+    font-size:12px; font-weight:700;
+    color:var(--muted); letter-spacing:1.5px;
+    flex:1; text-transform:uppercase;
+  }
+  .win-body{
+    flex:1; overflow-y:auto; overflow-x:hidden;
+  }
+  .win-body::-webkit-scrollbar{width:3px;}
+  .win-body::-webkit-scrollbar-track{background:transparent;}
+  .win-body::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px;}
+  .resize-handle{
+    position:absolute; bottom:0; right:0;
+    width:18px; height:18px;
+    cursor:se-resize; background:transparent; z-index:10;
+  }
+  .resize-handle::after{
+    content:'';
+    position:absolute; bottom:4px; right:4px;
+    width:7px; height:7px;
+    border-right:1.5px solid var(--border3);
+    border-bottom:1.5px solid var(--border3);
+    border-radius:0 0 2px 0;
+  }
+
+  /* ======== WINDOW INNER STYLES ======== */
+  .site-header-preview{
+    padding:15px 20px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:12px;
+    background:linear-gradient(135deg, rgba(0,229,255,0.03) 0%, transparent 60%);
+    flex-shrink:0;
+  }
+  .site-header-preview .logo-text{
+    font-family:'Orbitron',monospace;
+    font-size:17px; font-weight:900;
+    color:var(--accent);
+    text-shadow:0 0 30px rgba(0,229,255,0.5);
+    letter-spacing:3px;
+  }
+  .site-header-preview .tagline{font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:0.3px;}
+  .badge{
+    display:inline-block; padding:3px 9px;
+    border-radius:5px; font-size:10px;
+    font-weight:600; letter-spacing:0.5px; text-transform:uppercase;
+  }
+  .badge-blue{background:rgba(0,229,255,0.08);color:var(--accent);border:1px solid rgba(0,229,255,0.2);}
+  .badge-purple{background:rgba(124,58,237,0.1);color:#b09eff;border:1px solid rgba(124,58,237,0.22);}
+
+  /* admin bar */
+  .admin-bar{
+    display:none; padding:10px 20px;
+    background:rgba(0,229,255,0.03);
+    border-bottom:1px solid rgba(0,229,255,0.08);
+  }
+  .admin-bar.show{display:block;}
+  .news-add-btn,.game-add-btn{
+    padding:8px 16px; background:transparent;
+    border-radius:7px;
+    font-family:'Rajdhani',sans-serif; font-size:12px;
+    font-weight:600; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+    transition:all 0.2s; letter-spacing:0.5px; text-transform:uppercase;
+  }
+  .news-add-btn{border:1px solid rgba(0,229,255,0.35);color:var(--accent);}
+  .news-add-btn:hover{background:rgba(0,229,255,0.07);box-shadow:0 0 12px rgba(0,229,255,0.1);}
+  .game-add-btn{border:1px solid rgba(124,58,237,0.4);color:#b09eff;}
+  .game-add-btn:hover{background:rgba(124,58,237,0.08);box-shadow:0 0 12px rgba(124,58,237,0.12);}
+
+  /* ======== NEWS ======== */
+  .news-list{display:flex;flex-direction:column;}
+  .news-item{
+    padding:17px 20px;
+    border-bottom:1px solid var(--border);
+    transition:background 0.15s;
+    position:relative;
+  }
+  .news-item::before{
+    content:'';
+    position:absolute; left:0; top:10%; bottom:10%;
+    width:2px; background:transparent; border-radius:1px;
+    transition:background 0.2s;
+  }
+  .news-item:hover{background:rgba(0,229,255,0.02);}
+  .news-item:hover::before{background:var(--accent);}
+  .news-item:last-child{border-bottom:none;}
+  .news-item-date{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:1.2px;margin-bottom:5px;text-transform:uppercase;}
+  .news-item-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .news-item-body{font-size:13px;color:var(--text2);line-height:1.65;}
+  .edit-actions{display:flex;gap:6px;margin-top:10px;}
+  .edit-btn{
+    padding:5px 10px; background:transparent;
+    border:1px solid var(--border2); color:var(--muted);
+    border-radius:5px; font-family:'Rajdhani',sans-serif;
+    font-size:11px; font-weight:600; cursor:pointer;
+    transition:all 0.2s; letter-spacing:0.3px;
+  }
+  .edit-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .edit-btn.del:hover{border-color:var(--danger);color:var(--danger);}
+
+  /* ======== GAMES GRID ======== */
+  .games-grid{
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:14px; padding:18px;
+  }
+  .games-empty-state{
+    grid-column:1/-1;
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:center; padding:48px 24px;
+    gap:12px; text-align:center;
+  }
+  .games-empty-icon{
+    font-size:48px; opacity:0.3;
+    filter:grayscale(0.3);
+  }
+  .games-empty-title{
+    font-family:'Orbitron',monospace;
+    font-size:13px; font-weight:700;
+    color:var(--muted); letter-spacing:2px; text-transform:uppercase;
+  }
+  .games-empty-sub{
+    font-size:12px; color:var(--muted); opacity:0.6;
+    letter-spacing:0.3px; max-width:220px; line-height:1.6;
+  }
+  .game-card{
+    background:var(--bg3);
+    border:1px solid var(--border2);
+    border-radius:13px; overflow:hidden;
+    cursor:pointer;
+    transition:all 0.25s;
+    position:relative;
+  }
+  .game-card:hover{
+    border-color:rgba(0,229,255,0.3);
+    transform:translateY(-3px);
+    box-shadow:0 12px 40px rgba(0,0,0,0.5), 0 0 20px rgba(0,229,255,0.06);
+  }
+  .game-card::after{
+    content:'▶ ÖFFNEN';
+    position:absolute; inset:0;
+    background:rgba(0,229,255,0.07);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Orbitron',monospace;
+    font-size:11px; font-weight:700; letter-spacing:2px;
+    color:var(--accent);
+    opacity:0; transition:opacity 0.2s;
+    backdrop-filter:blur(2px);
+  }
+  .game-card:hover::after{opacity:1;}
+  .game-thumb{
+    height:96px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:42px;
+    position:relative; overflow:hidden;
+  }
+  .game-thumb::after{
+    content:'';
+    position:absolute; bottom:0; left:0; right:0; height:50%;
+    background:linear-gradient(transparent, var(--bg3));
+  }
+  .game-info{padding:11px 13px 13px;}
+  .game-name{font-size:14px;font-weight:700;margin-bottom:3px;color:var(--text);}
+  .game-genre{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+  .game-admin-actions{
+    display:flex; gap:6px; margin-top:8px;
+    position:relative; z-index:1;
+  }
+
+  /* ======== GAME DETAIL MODAL ======== */
+  #game-detail-overlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.88);
+    display:none; align-items:center; justify-content:center;
+    z-index:99997;
+    backdrop-filter:blur(12px);
+  }
+  #game-detail-overlay.show{display:flex;}
+  .game-detail-box{
+    background:var(--bg2);
+    border:1px solid var(--border3);
+    border-radius:18px;
+    width:680px; max-width:96vw;
+    max-height:86vh;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+    box-shadow:0 40px 120px rgba(0,0,0,0.85), 0 0 60px rgba(0,229,255,0.04);
+    animation:winOpen 0.2s cubic-bezier(0.22,1,0.36,1);
+  }
+  .gd-header{
+    padding:18px 22px;
+    background:var(--win-header);
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:14px; flex-shrink:0;
+    position:relative; overflow:hidden;
+  }
+  .gd-header::after{
+    content:'';
+    position:absolute; bottom:0; left:0; right:0;
+    height:1px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    opacity:0.2;
+  }
+  .gd-emoji{
+    width:52px; height:52px;
+    border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px;
+    border:1px solid var(--border2); flex-shrink:0;
+  }
+  .gd-title-col{flex:1;}
+  .gd-title{
+    font-family:'Orbitron',monospace;
+    font-size:20px; font-weight:900;
+    color:var(--text); letter-spacing:1px; margin-bottom:3px;
+  }
+  .gd-genre{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+  .gd-close-btn{
+    width:32px; height:32px; border-radius:50%;
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--border2);
+    color:var(--muted); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; transition:all 0.2s; flex-shrink:0;
+  }
+  .gd-close-btn:hover{background:rgba(255,71,87,0.12);border-color:var(--danger);color:var(--danger);}
+  .gd-tabs{
+    display:flex; gap:0;
+    background:var(--bg3);
+    border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .gd-tab{
+    padding:11px 20px;
+    font-family:'Rajdhani',sans-serif;
+    font-size:12px; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase;
+    color:var(--muted); cursor:pointer;
+    border-bottom:2px solid transparent;
+    transition:all 0.2s;
+  }
+  .gd-tab:hover{color:var(--text);}
+  .gd-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .gd-body{flex:1;overflow-y:auto;overflow-x:hidden;}
+  .gd-body::-webkit-scrollbar{width:3px;}
+  .gd-body::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px;}
+  .gd-panel{display:none;padding:22px;}
+  .gd-panel.active{display:block;}
+
+  /* tab: Übersicht */
+  .gd-banner{
+    width:100%; border-radius:10px;
+    object-fit:cover; height:200px;
+    background:var(--bg4);
+    display:block; margin-bottom:16px;
+    border:1px solid var(--border);
+    overflow:hidden; position:relative;
+  }
+  .gd-banner-img{
+    width:100%; height:200px;
+    object-fit:cover; border-radius:10px;
+    display:block;
+  }
+  .gd-banner-placeholder{
+    width:100%; height:200px;
+    border-radius:10px;
+    background:linear-gradient(135deg, var(--bg4) 0%, var(--bg5) 100%);
+    border:2px dashed var(--border2);
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:8px; color:var(--muted); font-size:13px;
+    cursor:pointer; transition:border-color 0.2s;
+    position:relative; overflow:hidden;
+  }
+  .gd-banner-placeholder:hover{border-color:var(--accent);}
+  .gd-banner-placeholder .ph-icon{font-size:32px;opacity:0.4;}
+  .gd-banner-placeholder .ph-text{font-weight:600;letter-spacing:0.5px;}
+  .gd-desc{
+    font-size:14px; color:var(--text2);
+    line-height:1.75; margin-bottom:16px;
+  }
+  .gd-desc-empty{
+    font-size:13px; color:var(--muted);
+    font-style:italic; line-height:1.6;
+  }
+  .gd-admin-section{
+    margin-top:16px; padding:14px;
+    background:rgba(124,58,237,0.05);
+    border:1px solid rgba(124,58,237,0.15);
+    border-radius:10px;
+  }
+  .gd-admin-label{
+    font-size:10px; color:#b09eff;
+    font-weight:600; letter-spacing:1.5px;
+    text-transform:uppercase; margin-bottom:10px;
+  }
+  .gd-textarea{
+    width:100%;
+    background:var(--bg3); border:1px solid var(--border2);
+    border-radius:8px; padding:10px 13px;
+    color:var(--text); font-family:'Rajdhani',sans-serif;
+    font-size:13px; outline:none; resize:vertical;
+    min-height:80px; transition:border-color 0.2s;
+    letter-spacing:0.2px;
+  }
+  .gd-textarea:focus{border-color:var(--accent);}
+  .gd-save-btn{
+    margin-top:8px; padding:8px 18px;
+    background:var(--accent); color:#000;
+    border:none; border-radius:7px;
+    font-family:'Orbitron',monospace; font-size:10px;
+    font-weight:700; letter-spacing:1.5px;
+    cursor:pointer; transition:opacity 0.2s, box-shadow 0.2s;
+    box-shadow:0 4px 18px rgba(0,229,255,0.25);
+  }
+  .gd-save-btn:hover{opacity:0.88;box-shadow:0 6px 24px rgba(0,229,255,0.35);}
+
+  /* tab: Images */
+  .gd-images-grid{
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:10px; margin-bottom:16px;
+  }
+  .gd-img-slot{
+    aspect-ratio:16/9;
+    border-radius:8px;
+    background:var(--bg4);
+    border:1px solid var(--border2);
+    overflow:hidden; position:relative;
+    cursor:pointer; transition:border-color 0.2s;
+  }
+  .gd-img-slot:hover{border-color:var(--accent);}
+  .gd-img-slot img{width:100%;height:100%;object-fit:cover;display:block;}
+  .gd-img-slot .img-overlay{
+    position:absolute; inset:0;
+    background:rgba(0,0,0,0.5);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:opacity 0.2s;
+    gap:8px;
+  }
+  .gd-img-slot:hover .img-overlay{opacity:1;}
+  .gd-img-add{
+    aspect-ratio:16/9;
+    border-radius:8px;
+    background:var(--bg4);
+    border:2px dashed var(--border2);
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:6px; color:var(--muted); font-size:11px;
+    cursor:pointer; transition:all 0.2s;
+  }
+  .gd-img-add:hover{border-color:var(--accent);color:var(--accent);}
+  .gd-img-add .add-icon{font-size:22px;opacity:0.5;}
+
+  /* tab: Patch Notes */
+  .patch-note{
+    padding:14px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .patch-note:last-child{border-bottom:none;}
+  .patch-meta{
+    display:flex; align-items:center; gap:10px; margin-bottom:8px;
+  }
+  .patch-version{
+    font-family:'Share Tech Mono',monospace;
+    font-size:12px; color:var(--accent);
+    padding:2px 8px;
+    background:rgba(0,229,255,0.07);
+    border:1px solid rgba(0,229,255,0.2);
+    border-radius:4px; letter-spacing:0.5px;
+  }
+  .patch-date{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.8px;}
+  .patch-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .patch-body{font-size:13px;color:var(--text2);line-height:1.7;white-space:pre-line;}
+  .patch-empty{
+    padding:32px 0; text-align:center;
+    font-size:13px; color:var(--muted); font-style:italic;
+  }
+  .patch-add-btn{
+    margin-bottom:16px;
+    padding:8px 16px; background:transparent;
+    border:1px solid rgba(0,229,255,0.35); color:var(--accent);
+    border-radius:7px; font-family:'Rajdhani',sans-serif;
+    font-size:12px; font-weight:600; cursor:pointer;
+    letter-spacing:0.5px; text-transform:uppercase;
+    transition:all 0.2s; display:inline-flex; align-items:center; gap:6px;
+  }
+  .patch-add-btn:hover{background:rgba(0,229,255,0.07);}
+
+  /* tab: Roadmap */
+  .roadmap-list{display:flex;flex-direction:column;gap:10px;}
+  .roadmap-item{
+    padding:13px 16px;
+    border-radius:10px;
+    border:1px solid var(--border2);
+    background:var(--bg3);
+    display:flex; align-items:flex-start; gap:12px;
+  }
+  .rm-status{
+    width:10px; height:10px; border-radius:50%;
+    flex-shrink:0; margin-top:4px;
+  }
+  .rm-status.done{background:var(--success);box-shadow:0 0 8px rgba(0,255,136,0.5);}
+  .rm-status.wip{background:var(--warning);box-shadow:0 0 8px rgba(255,165,2,0.5); animation:pulse 2s ease-in-out infinite;}
+  .rm-status.planned{background:var(--muted);}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .rm-content{flex:1;}
+  .rm-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;}
+  .rm-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+  .rm-badge{
+    font-size:9px; padding:2px 7px; border-radius:3px;
+    font-weight:700; letter-spacing:0.8px; text-transform:uppercase;
+    flex-shrink:0;
+  }
+  .rm-badge.done{background:rgba(0,255,136,0.1);color:var(--success);border:1px solid rgba(0,255,136,0.2);}
+  .rm-badge.wip{background:rgba(255,165,2,0.1);color:var(--warning);border:1px solid rgba(255,165,2,0.2);}
+  .rm-badge.planned{background:rgba(74,74,106,0.15);color:var(--muted);border:1px solid var(--border2);}
+  .rm-empty{padding:24px 0;text-align:center;font-size:13px;color:var(--muted);font-style:italic;}
+  .rm-add-btn{
+    margin-bottom:14px;
+    padding:8px 16px; background:transparent;
+    border:1px solid rgba(0,255,136,0.3); color:var(--success);
+    border-radius:7px; font-family:'Rajdhani',sans-serif;
+    font-size:12px; font-weight:600; cursor:pointer;
+    letter-spacing:0.5px; text-transform:uppercase;
+    transition:all 0.2s; display:inline-flex; align-items:center; gap:6px;
+  }
+  .rm-add-btn:hover{background:rgba(0,255,136,0.06);}
+
+  /* ======== LOGIN OVERLAY ======== */
+  #login-overlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.95);
+    display:flex; align-items:center; justify-content:center;
+    z-index:99999; backdrop-filter:blur(20px);
+  }
+  .login-box{
+    background:var(--bg2);
+    border:1px solid var(--border3);
+    border-radius:22px; padding:46px 42px 38px;
+    width:390px; text-align:center;
+    box-shadow:0 60px 120px rgba(0,0,0,0.85), 0 0 100px rgba(0,229,255,0.04);
+    animation:loginAppear 0.35s cubic-bezier(0.22,1,0.36,1);
+    position:relative; overflow:hidden;
+  }
+  .login-box::before{
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    opacity:0.3;
+  }
+  @keyframes loginAppear{
+    from{opacity:0;transform:scale(0.93) translateY(14px);}
+    to{opacity:1;transform:scale(1) translateY(0);}
+  }
+  .login-logo{
+    font-family:'Orbitron',monospace;
+    font-size:36px; font-weight:900;
+    color:var(--accent); letter-spacing:6px;
+    margin-bottom:5px;
+    text-shadow:0 0 50px rgba(0,229,255,0.7), 0 0 100px rgba(0,229,255,0.3);
+  }
+  .login-sub{font-size:12px;color:var(--muted);margin-bottom:34px;font-weight:400;letter-spacing:0.5px;}
+  .login-field{
+    width:100%; background:var(--bg3);
+    border:1px solid var(--border2);
+    border-radius:10px; padding:13px 17px;
+    color:var(--text); font-family:'Rajdhani',sans-serif;
+    font-size:14px; margin-bottom:11px;
+    outline:none; transition:border-color 0.2s, box-shadow 0.2s; text-align:left;
+  }
+  .login-field:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,0.07);}
+  .login-btn{
+    width:100%; background:var(--accent); color:#000;
+    border:none; border-radius:10px; padding:14px;
+    font-family:'Orbitron',monospace; font-size:12px;
+    font-weight:700; letter-spacing:2px;
+    cursor:pointer; margin-top:4px;
+    transition:opacity 0.2s,transform 0.1s,box-shadow 0.2s;
+    box-shadow:0 6px 26px rgba(0,229,255,0.3);
+  }
+  .login-btn:hover{opacity:0.9;box-shadow:0 8px 32px rgba(0,229,255,0.4);}
+  .login-btn:active{transform:scale(0.99);}
+  .login-divider{display:flex;align-items:center;gap:12px;margin:22px 0;}
+  .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+  .login-divider span{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;}
+  .guest-btn{
+    width:100%; background:transparent; color:var(--muted);
+    border:1px solid var(--border2); border-radius:10px; padding:13px;
+    font-family:'Rajdhani',sans-serif; font-size:13px;
+    font-weight:600; letter-spacing:0.5px; cursor:pointer;
+    transition:all 0.2s; text-transform:uppercase;
+  }
+  .guest-btn:hover{border-color:var(--border3);color:var(--text);background:rgba(255,255,255,0.03);}
+  .login-err{
+    color:var(--danger); font-size:12px;
+    margin-top:11px; display:none;
+    padding:9px 13px;
+    background:rgba(255,71,87,0.07);
+    border:1px solid rgba(255,71,87,0.2);
+    border-radius:7px;
+  }
+  .login-hint{margin-top:22px;font-size:10px;color:var(--muted);opacity:0.45;letter-spacing:0.3px;}
+  .login-tab{
+    flex:1; padding:10px 12px;
+    background:transparent; border:1px solid transparent;
+    border-radius:8px; color:var(--muted);
+    font-family:'Rajdhani',sans-serif; font-size:12px;
+    font-weight:600; cursor:pointer; transition:all 0.2s;
+    text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .login-tab:hover{border-color:var(--border2);color:var(--text);}
+  .login-tab.active{
+    background:rgba(0,229,255,0.08);
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  .login-tab-content{display:none;}
+  .login-tab-content.active{display:block;}
+
+  /* ======== IMPRESSUM ======== */
+  .impressum-content{padding:22px;}
+  .impressum-content h3{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-family:'Orbitron',monospace;margin-bottom:9px;margin-top:24px;}
+  .impressum-content h3:first-child{margin-top:0;}
+  .impressum-content p,.impressum-content address{font-size:13px;color:var(--text2);line-height:1.8;font-style:normal;}
+  .impressum-content a{color:var(--accent);text-decoration:none;}
+  .impressum-content a:hover{text-decoration:underline;}
+
+  /* ======== SETTINGS ======== */
+  .settings-locked{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px;gap:13px;text-align:center;}
+  .settings-locked .lock-icon{font-size:40px;margin-bottom:5px;filter:grayscale(0.3);}
+  .settings-locked p{font-size:13px;color:var(--muted);line-height:1.6;}
+  .settings-locked .login-link{
+    margin-top:9px;padding:9px 22px;
+    background:transparent;border:1px solid var(--accent);
+    color:var(--accent);border-radius:7px;
+    font-family:'Rajdhani',sans-serif;font-size:12px;
+    font-weight:600;cursor:pointer;letter-spacing:0.5px;
+    text-transform:uppercase;transition:background 0.2s;
+  }
+  .settings-locked .login-link:hover{background:rgba(0,229,255,0.07);}
+  .settings-section{padding:16px 20px;border-bottom:1px solid var(--border);}
+  .settings-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:14px;}
+  .settings-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .settings-row:last-child{margin-bottom:0;}
+  .settings-row label{font-size:13px;color:var(--text);}
+  .settings-input{
+    background:var(--bg3);border:1px solid var(--border2);
+    border-radius:7px;padding:8px 12px;color:var(--text);
+    font-family:'Rajdhani',sans-serif;font-size:13px;
+    outline:none;width:195px;transition:border-color 0.2s,box-shadow 0.2s;
+  }
+  .settings-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,0.06);}
+  .settings-save{
+    margin:16px 20px;padding:10px 22px;
+    background:var(--accent);color:#000;border:none;
+    border-radius:7px;font-family:'Orbitron',monospace;
+    font-size:10px;font-weight:700;letter-spacing:1.5px;
+    cursor:pointer;transition:opacity 0.2s,box-shadow 0.2s;
+    box-shadow:0 4px 18px rgba(0,229,255,0.22);
+  }
+  .settings-save:hover{opacity:0.85;box-shadow:0 6px 24px rgba(0,229,255,0.32);}
+
+  /* ======== MODALS ======== */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.82);
+    display:flex;align-items:center;justify-content:center;
+    z-index:99998;backdrop-filter:blur(8px);
+  }
+  .modal-box{
+    background:var(--bg2);border:1px solid var(--border3);
+    border-radius:15px;padding:28px 26px;
+    width:440px;max-width:92vw;
+    box-shadow:0 32px 90px rgba(0,0,0,0.75),inset 0 1px 0 rgba(255,255,255,0.03);
+    animation:winOpen 0.17s ease-out; max-height:90vh; overflow-y:auto;
+  }
+  .modal-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:20px;letter-spacing:0.3px;}
+  .modal-input{
+    width:100%;background:var(--bg3);border:1px solid var(--border2);
+    border-radius:8px;padding:10px 14px;color:var(--text);
+    font-family:'Rajdhani',sans-serif;font-size:14px;margin-bottom:10px;
+    outline:none;transition:border-color 0.2s,box-shadow 0.2s;
+  }
+  .modal-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,0.07);}
+  .modal-textarea{
+    width:100%;background:var(--bg3);border:1px solid var(--border2);
+    border-radius:8px;padding:10px 14px;color:var(--text);
+    font-family:'Rajdhani',sans-serif;font-size:14px;margin-bottom:10px;
+    outline:none;resize:vertical;min-height:80px;
+    transition:border-color 0.2s,box-shadow 0.2s;
+  }
+  .modal-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,0.07);}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;}
+  .btn-cancel{
+    padding:9px 18px;background:transparent;border:1px solid var(--border2);
+    color:var(--muted);border-radius:7px;font-family:'Rajdhani',sans-serif;
+    font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;
+  }
+  .btn-cancel:hover{border-color:var(--text);color:var(--text);}
+  .btn-save{
+    padding:9px 18px;background:var(--accent);color:#000;border:none;
+    border-radius:7px;font-family:'Rajdhani',sans-serif;font-size:13px;
+    font-weight:700;cursor:pointer;transition:opacity 0.2s;
+  }
+  .btn-save:hover{opacity:0.85;}
+
+  /* ======== FORUMS & SUPPORT ======== */
+  .forum-container{display:flex;flex-direction:column;}
+  .forum-category{padding:16px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;}
+  .forum-category:hover{background:rgba(0,229,255,0.02);}
+  .forum-category-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;}
+  .forum-category-desc{font-size:11px;color:var(--muted);}
+  .forum-posts{padding:12px 20px;background:var(--bg3);border-bottom:1px solid var(--border);}
+  .forum-post{padding:10px 0;border-bottom:1px solid var(--border2);font-size:12px;}
+  .forum-post:last-child{border-bottom:none;}
+  .forum-post-user{color:var(--accent);font-weight:600;margin-bottom:4px;}
+  .forum-post-time{font-size:10px;color:var(--muted);}
+  .forum-post-body{color:var(--text2);margin-top:4px;line-height:1.5;}
+  .support-list{display:flex;flex-direction:column;}
+  .support-ticket{padding:14px 20px;border-bottom:1px solid var(--border);transition:background 0.15s;}
+  .support-ticket:hover{background:rgba(0,229,255,0.02);}
+  .support-ticket-header{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .support-ticket-status{
+    font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600;text-transform:uppercase;
+  }
+  .support-ticket-status.open{background:rgba(0,255,136,0.1);color:var(--success);}
+  .support-ticket-status.closed{background:rgba(74,74,106,0.15);color:var(--muted);}
+  .support-ticket-title{font-size:13px;font-weight:600;color:var(--text);}
+  .support-ticket-user{font-size:11px;color:var(--muted);margin-bottom:6px;}
+  .support-ticket-body{font-size:12px;color:var(--text2);line-height:1.5;}
+  .support-ticket-actions{display:flex;gap:6px;margin-top:8px;}
+  .support-ticket-actions .edit-btn{padding:4px 10px;font-size:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px;}
+
+  /* ======== BOOTSCREEN ======== */
+  #bootscreen{
+    position:fixed;inset:0;z-index:999999;
+    background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:0;
+  }
+  #bootscreen.fade-out{animation:bootFade 0.8s ease-out forwards;}
+  @keyframes bootFade{to{opacity:0;pointer-events:none;}}
+  .boot-logo{
+    font-family:'Orbitron',monospace;font-size:52px;font-weight:900;
+    color:var(--accent);letter-spacing:10px;
+    text-shadow:0 0 60px rgba(0,229,255,0.9),0 0 120px rgba(0,229,255,0.4);
+    animation:bootGlow 1.5s ease-in-out infinite alternate;
+    margin-bottom:10px;
+  }
+  @keyframes bootGlow{from{text-shadow:0 0 40px rgba(0,229,255,0.7)}to{text-shadow:0 0 80px rgba(0,229,255,1),0 0 160px rgba(0,229,255,0.5)}}
+  .boot-sub{font-size:13px;color:var(--muted);letter-spacing:4px;margin-bottom:48px;font-family:'Share Tech Mono',monospace;}
+  .boot-log{
+    font-family:'Share Tech Mono',monospace;font-size:11px;
+    color:var(--accent4);opacity:0.7;
+    height:110px;display:flex;flex-direction:column;justify-content:flex-end;
+    gap:3px;text-align:left;width:320px;margin-bottom:24px;
+  }
+  .boot-log-line{animation:logAppear 0.2s ease-out;}
+  @keyframes logAppear{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+  .boot-bar-wrap{width:280px;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;}
+  .boot-bar{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:2px;width:0%;transition:width 0.15s linear;}
+  .boot-ver{font-size:10px;color:var(--muted);margin-top:14px;letter-spacing:2px;opacity:0.4;}
+
+  /* ======== NOTIFICATIONS ======== */
+  #notif-container{
+    position:fixed;top:14px;right:14px;z-index:99997;
+    display:flex;flex-direction:column;gap:8px;pointer-events:none;
+  }
+  .notif{
+    background:var(--bg2);border:1px solid var(--border3);
+    border-radius:12px;padding:12px 16px;
+    min-width:280px;max-width:340px;
+    box-shadow:0 12px 40px rgba(0,0,0,0.6);
+    display:flex;align-items:flex-start;gap:11px;
+    animation:notifIn 0.3s cubic-bezier(0.22,1,0.36,1);
+    pointer-events:all;cursor:pointer;
+    position:relative;overflow:hidden;
+  }
+  .notif::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  }
+  .notif.type-info::before{background:linear-gradient(90deg,transparent,var(--accent),transparent);}
+  .notif.type-success::before{background:linear-gradient(90deg,transparent,var(--success),transparent);}
+  .notif.type-warn::before{background:linear-gradient(90deg,transparent,var(--warning),transparent);}
+  .notif.type-error::before{background:linear-gradient(90deg,transparent,var(--danger),transparent);}
+  .notif.fade-out{animation:notifOut 0.25s ease-in forwards;}
+  @keyframes notifIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+  @keyframes notifOut{to{opacity:0;transform:translateX(30px);margin-top:-58px;height:0;padding:0;}}
+  .notif-icon{font-size:20px;flex-shrink:0;margin-top:1px;}
+  .notif-body{}
+  .notif-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;}
+  .notif-msg{font-size:11px;color:var(--text2);line-height:1.4;}
+  .notif-time{font-size:9px;color:var(--muted);margin-top:4px;font-family:'Share Tech Mono',monospace;}
+
+  /* ======== ONLINE USERS BAR ======== */
+  #online-bar{
+    position:fixed;bottom:52px;right:0;
+    width:190px;
+    background:rgba(4,4,12,0.97);
+    border-top:1px solid var(--border2);
+    border-left:1px solid var(--border2);
+    border-radius:10px 0 0 0;
+    z-index:9990;padding:10px 0 6px;
+    transform:translateX(100%);
+    transition:transform 0.3s cubic-bezier(0.22,1,0.36,1);
+  }
+  #online-bar.show{transform:translateX(0);}
+  .online-bar-title{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;padding:0 12px 8px;}
+  .online-user-row{
+    display:flex;align-items:center;gap:9px;
+    padding:5px 12px;cursor:pointer;transition:background 0.15s;
+  }
+  .online-user-row:hover{background:rgba(0,229,255,0.04);}
+  .online-dot{width:7px;height:7px;border-radius:50%;background:var(--success);flex-shrink:0;box-shadow:0 0 6px rgba(0,255,136,0.6);animation:pulse 2s ease-in-out infinite;}
+  .online-avatar{
+    width:24px;height:24px;border-radius:50%;
+    background:var(--bg4);border:1px solid var(--border2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;overflow:hidden;flex-shrink:0;
+  }
+  .online-avatar img{width:100%;height:100%;object-fit:cover;}
+  .online-uname{font-size:11px;color:var(--text2);font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* ======== ONLINE TOGGLE BTN ======== */
+  #online-toggle{
+    padding:5px 10px;background:transparent;
+    border:1px solid var(--border2);border-radius:6px;
+    color:var(--muted);font-family:'Rajdhani',sans-serif;
+    font-size:11px;font-weight:600;cursor:pointer;
+    transition:all 0.2s;display:flex;align-items:center;gap:5px;
+  }
+  #online-toggle:hover{border-color:var(--success);color:var(--success);}
+  .online-pulse{width:7px;height:7px;border-radius:50%;background:var(--success);animation:pulse 2s ease-in-out infinite;}
+
+  /* ======== USER PROFILE AVATAR ======== */
+  .user-avatar{
+    width:28px;height:28px;border-radius:50%;
+    background:var(--bg4);border:1.5px solid var(--border3);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:14px;overflow:hidden;cursor:pointer;
+    transition:border-color 0.2s;flex-shrink:0;
+  }
+  .user-avatar:hover{border-color:var(--accent);}
+  .user-avatar img{width:100%;height:100%;object-fit:cover;}
+  .avatar-upload-area{
+    width:80px;height:80px;border-radius:50%;
+    background:var(--bg4);border:2px dashed var(--border2);
+    display:flex;flex-direction:column;align-items:center;
+    justify-content:center;cursor:pointer;
+    transition:border-color 0.2s;margin:0 auto 16px;
+    font-size:28px;overflow:hidden;position:relative;
+  }
+  .avatar-upload-area:hover{border-color:var(--accent);}
+  .avatar-upload-area img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;}
+  .avatar-upload-overlay{
+    position:absolute;inset:0;background:rgba(0,0,0,0.5);
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity 0.2s;font-size:14px;
+  }
+  .avatar-upload-area:hover .avatar-upload-overlay{opacity:1;}
+
+
+  /* ======== GAME LAUNCH PLATFORM ======== */
+  #game-launch-overlay{
+    position:fixed;inset:0;z-index:999990;
+    background:var(--bg);
+    display:none;flex-direction:column;
+  }
+  #game-launch-overlay.show{display:flex;}
+  .launch-header{
+    height:42px;background:var(--win-header);
+    border-bottom:1px solid var(--border2);
+    display:flex;align-items:center;gap:12px;
+    padding:0 16px;flex-shrink:0;
+    position:relative;
+  }
+  .launch-header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,0.15),transparent);}
+  .launch-title{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;color:var(--accent);letter-spacing:2px;flex:1;}
+  .launch-close{
+    padding:5px 13px;background:transparent;
+    border:1px solid rgba(255,71,87,0.3);border-radius:6px;
+    color:var(--danger);font-family:'Rajdhani',sans-serif;
+    font-size:11px;font-weight:700;cursor:pointer;
+    letter-spacing:0.5px;transition:all 0.2s;
+  }
+  .launch-close:hover{background:rgba(255,71,87,0.1);}
+  #game-launch-frame{flex:1;border:none;width:100%;background:#000;}
+  .launch-no-url{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:14px;color:var(--muted);
+  }
+  .launch-no-url .no-url-icon{font-size:52px;opacity:0.3;}
+  .launch-no-url p{font-size:13px;letter-spacing:0.3px;}
+
+</style>
+</head>
+<body>
+<div id="bootscreen">
+  <div class="boot-logo" id="boot-logo-text">NEXUS</div>
+  <div class="boot-sub">GAMING COMMUNITY OS v3.0</div>
+  <div class="boot-log" id="boot-log"></div>
+  <div class="boot-bar-wrap"><div class="boot-bar" id="boot-bar"></div></div>
+  <div class="boot-ver">BUILD 2025.05.28 — ALL SYSTEMS READY</div>
+</div>
+<div id="scanline"></div>
+
+<div id="notif-container"></div>
+<!-- ======== LOGIN OVERLAY ======== -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo" id="login-site-name">NEXUS</div>
+    <div class="login-sub">Gaming Community</div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+      <button class="login-tab active" onclick="switchLoginTab('user')">👤 Nutzer</button>
+      <button class="login-tab" onclick="switchLoginTab('admin')">🔑 Admin</button>
+    </div>
+
+    <!-- User Tab -->
+    <div id="user-tab" class="login-tab-content" style="display:block;">
+      <div style="margin-bottom:14px;">
+        <div class="login-sub" style="margin-bottom:14px;text-align:left;font-size:11px;color:var(--muted);">Wähle eine Option:</div>
+        <input class="login-field" type="text" id="user-login-user" placeholder="Benutzername" autocomplete="off">
+        <input class="login-field" type="password" id="user-login-pass" placeholder="Passwort" autocomplete="off">
+        <button class="login-btn" onclick="tryUserLogin()">ANMELDEN</button>
+        <div style="margin:12px 0;text-align:center;">
+          <span style="font-size:11px;color:var(--muted);">Noch kein Konto?</span>
+        </div>
+        <input class="login-field" type="text" id="user-reg-user" placeholder="Neuer Benutzername" autocomplete="off">
+        <input class="login-field" type="password" id="user-reg-pass" placeholder="Passwort wählen" autocomplete="off">
+        <input class="login-field" type="password" id="user-reg-pass2" placeholder="Passwort bestätigen" autocomplete="off">
+        <button class="login-btn" style="background:var(--accent2);" onclick="registerNewUser()">📝 REGISTRIEREN</button>
+      </div>
+      <div class="login-err" id="user-login-err">❌ Fehler</div>
+    </div>
+
+    <!-- Admin Tab -->
+    <div id="admin-tab" class="login-tab-content" style="display:none;">
+      <div style="margin-bottom:14px;">
+        <div class="login-sub" style="margin-bottom:14px;text-align:left;font-size:11px;color:var(--muted);">Admin-Zugangsdaten:</div>
+        <input class="login-field" type="text" id="admin-login-user" placeholder="Admin Benutzername" autocomplete="off">
+        <input class="login-field" type="password" id="admin-login-pass" placeholder="Admin Passwort" autocomplete="off">
+        <button class="login-btn" style="background:#ffa502;" onclick="tryAdminLogin()">🔐 ADMIN ANMELDEN</button>
+      </div>
+      <div class="login-err" id="admin-login-err">❌ Falsches Passwort</div>
+    </div>
+
+    <div class="login-divider"><span>oder</span></div>
+    <button class="guest-btn" onclick="enterAsGuest()">👁 Als Gast fortfahren</button>
+  </div>
+</div>
+
+<!-- ======== GAME DETAIL OVERLAY ======== -->
+<div id="game-detail-overlay">
+  <div class="game-detail-box">
+    <div class="gd-header">
+      <div class="gd-emoji" id="gd-emoji-el" style="background:#00e5ff18">🎮</div>
+      <div class="gd-title-col">
+        <div class="gd-title" id="gd-title-el">Game</div>
+        <div class="gd-genre" id="gd-genre-el">Genre</div>
+      </div>
+      <button class="gd-close-btn" onclick="closeGameDetail()">✕</button>
+    </div>
+    <div class="gd-tabs" id="gd-tabs">
+      <div class="gd-tab active" onclick="gdTab(0)">Übersicht</div>
+      <div class="gd-tab" onclick="gdTab(1)">Bilder</div>
+      <div class="gd-tab" onclick="gdTab(2)">Patch Notes</div>
+      <div class="gd-tab" onclick="gdTab(3)">Roadmap</div>
+    </div>
+    <div class="gd-body">
+      <!-- Tab 0: Übersicht -->
+      <div class="gd-panel active" id="gd-panel-0">
+        <div id="gd-banner-wrap"></div>
+        <div id="gd-desc-el" class="gd-desc"></div>
+        <div class="gd-admin-section" id="gd-admin-overview" style="display:none;">
+          <div class="gd-admin-label">⚙ Admin — Beschreibung</div>
+          <textarea class="gd-textarea" id="gd-desc-input" placeholder="Spielbeschreibung eingeben..." rows="4"></textarea>
+          <div style="margin-top:10px">
+            <div class="gd-admin-label">Bannerbilder-URL</div>
+            <input class="modal-input" id="gd-banner-url" placeholder="https://... (Bild-URL)">
+          </div>
+          <button class="gd-save-btn" onclick="saveGameOverview()">💾 SPEICHERN</button>
+        </div>
+      </div>
+      <!-- Tab 1: Bilder -->
+      <div class="gd-panel" id="gd-panel-1">
+        <div class="gd-images-grid" id="gd-images-grid"></div>
+        <div id="gd-admin-images" style="display:none;">
+          <div class="gd-admin-label" style="color:#b09eff;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">⚙ Bild hinzufügen</div>
+          <input class="modal-input" id="gd-add-img-url" placeholder="Bild-URL (https://...)">
+          <input class="modal-input" id="gd-add-img-caption" placeholder="Bildunterschrift (optional)">
+          <button class="gd-save-btn" style="background:var(--accent2)" onclick="addGameImage()">➕ HINZUFÜGEN</button>
+        </div>
+      </div>
+      <!-- Tab 2: Patch Notes -->
+      <div class="gd-panel" id="gd-panel-2">
+        <div id="gd-admin-patches" style="display:none;">
+          <button class="patch-add-btn" onclick="openPatchModal()">＋ Patch Note hinzufügen</button>
+        </div>
+        <div id="gd-patches-list"></div>
+      </div>
+      <!-- Tab 3: Roadmap -->
+      <div class="gd-panel" id="gd-panel-3">
+        <div id="gd-admin-roadmap" style="display:none;">
+          <button class="rm-add-btn" onclick="openRoadmapModal()">＋ Roadmap-Eintrag hinzufügen</button>
+        </div>
+        <div class="roadmap-list" id="gd-roadmap-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== DESKTOP ======== -->
+<div id="desktop">
+  <div class="desktop-icons">
+    <div class="d-icon" onclick="openWindow('win-news')">
+      <div class="d-icon-img" style="background:rgba(0,229,255,0.1);color:var(--accent);">📰</div>
+      <span>News</span>
+    </div>
+    <div class="d-icon" onclick="openWindow('win-games')">
+      <div class="d-icon-img" style="background:rgba(124,58,237,0.1);color:#b09eff;">🎮</div>
+      <span>Games</span>
+    </div>
+    <div class="d-icon" onclick="openWindow('win-forums')">
+      <div class="d-icon-img" style="background:rgba(0,255,136,0.1);color:var(--success);">💬</div>
+      <span>Forums</span>
+    </div>
+    <div class="d-icon" onclick="openWindow('win-support')">
+      <div class="d-icon-img" style="background:rgba(255,165,2,0.1);color:var(--warning);">🎧</div>
+      <span>Support</span>
+    </div>
+    <div class="d-icon" onclick="openWindow('win-impressum')">
+      <div class="d-icon-img" style="background:rgba(255,71,87,0.1);color:var(--accent3);">📋</div>
+      <span>Impressum</span>
+    </div>
+    <div class="d-icon" onclick="openWindow('win-settings')">
+      <div class="d-icon-img" style="background:rgba(0,229,255,0.1);color:var(--accent);">⚙️</div>
+      <span>Settings</span>
+    </div>
+  </div>
+
+  <!-- WINDOW: NEWS -->
+  <div class="window" id="win-news" style="width:570px;height:450px;top:58px;left:110px;">
+    <div class="win-header" onmousedown="startDrag(event,'win-news')">
+      <div class="win-controls">
+        <button class="win-ctrl close" onclick="closeWindow('win-news')"></button>
+        <button class="win-ctrl min" onclick="minWindow('win-news')"></button>
+        <button class="win-ctrl max" onclick="maxWindow('win-news')"></button>
+      </div>
+      <div class="win-title">📰 News</div>
+    </div>
+    <div class="win-body">
+      <div class="site-header-preview">
+        <div>
+          <div class="logo-text" id="preview-name-news">NEXUS</div>
+          <div class="tagline" id="preview-tag-news">Deine Gaming-Community</div>
+        </div>
+        <div style="margin-left:auto"><span class="badge badge-blue">Neuigkeiten</span></div>
+      </div>
+      <div class="admin-bar" id="admin-news-bar">
+        <button class="news-add-btn" onclick="openNewsModal()">＋ News hinzufügen</button>
+      </div>
+      <div class="news-list" id="news-list"></div>
+    </div>
+    <div class="resize-handle" onmousedown="startResize(event,'win-news')"></div>
+  </div>
+
+  <!-- WINDOW: GAMES -->
+  <div class="window" id="win-games" style="width:510px;height:490px;top:75px;left:195px;">
+    <div class="win-header" onmousedown="startDrag(event,'win-games')">
+      <div class="win-controls">
+        <button class="win-ctrl close" onclick="closeWindow('win-games')"></button>
+        <button class="win-ctrl min" onclick="minWindow('win-games')"></button>
+        <button class="win-ctrl max" onclick="maxWindow('win-games')"></button>
+      </div>
+      <div class="win-title">🎮 Games</div>
+    </div>
+    <div class="win-body">
+      <div class="site-header-preview">
+        <div>
+          <div class="logo-text" id="preview-name-games">NEXUS</div>
+          <div class="tagline" id="preview-tag-games">Deine Gaming-Community</div>
+        </div>
+        <div style="margin-left:auto"><span class="badge badge-purple">Spiele</span></div>
+      </div>
+      <div class="admin-bar" id="admin-games-bar">
+        <button class="game-add-btn" onclick="openGameModal()">＋ Spiel hinzufügen</button>
+      </div>
+      <div class="games-grid" id="games-grid"></div>
+    </div>
+    <div class="resize-handle" onmousedown="startResize(event,'win-games')"></div>
+  </div>
+
+  <!-- WINDOW: FORUMS -->
+  <div class="window" id="win-forums" style="width:520px;height:480px;top:95px;left:360px;">
+    <div class="win-header" onmousedown="startDrag(event,'win-forums')">
+      <div class="win-controls">
+        <button class="win-ctrl close" onclick="closeWindow('win-forums')"></button>
+        <button class="win-ctrl min" onclick="minWindow('win-forums')"></button>
+        <button class="win-ctrl max" onclick="maxWindow('win-forums')"></button>
+      </div>
+      <div class="win-title">💬 Forums</div>
+    </div>
+    <div class="win-body">
+      <div class="site-header-preview">
+        <div>
+          <div class="logo-text">Forums</div>
+          <div class="tagline">Community Diskussionen</div>
+        </div>
+        <div style="margin-left:auto"><span class="badge badge-blue">Community</span></div>
+      </div>
+      <div class="admin-bar" id="admin-forums-bar">
+        <button class="news-add-btn" style="border-color:rgba(0,229,255,0.35);color:var(--accent);" onclick="openForumCategoryModal()">⚙️ Kategorie verwalten</button>
+      </div>
+      <div class="forum-container" id="forum-container"></div>
+    </div>
+    <div class="resize-handle" onmousedown="startResize(event,'win-forums')"></div>
+  </div>
+
+  <!-- WINDOW: SUPPORT -->
+  <div class="window" id="win-support" style="width:520px;height:480px;top:115px;left:430px;">
+    <div class="win-header" onmousedown="startDrag(event,'win-support')">
+      <div class="win-controls">
+        <button class="win-ctrl close" onclick="closeWindow('win-support')"></button>
+        <button class="win-ctrl min" onclick="minWindow('win-support')"></button>
+        <button class="win-ctrl max" onclick="maxWindow('win-support')"></button>
+      </div>
+      <div class="win-title">🎧 Support</div>
+    </div>
+    <div class="win-body">
+      <div class="site-header-preview">
+        <div>
+          <div class="logo-text">Support</div>
+          <div class="tagline">Hier helfen wir dir</div>
+        </div>
+        <div style="margin-left:auto"><span class="badge badge-purple">Hilfe</span></div>
+      </div>
+      <div style="padding:15px 20px;border-bottom:1px solid var(--border);" id="support-create-btn"></div>
+      <div class="support-list" id="support-list"></div>
+    </div>
+    <div class="resize-handle" onmousedown="startResize(event,'win-support')"></div>
+  </div>
+
+  <!-- WINDOW: IMPRESSUM -->
+  <div class="window" id="win-impressum" style="width:430px;height:400px;top:95px;left:280px;">
+    <div class="win-header" onmousedown="startDrag(event,'win-impressum')">
+      <div class="win-controls">
+        <button class="win-ctrl close" onclick="closeWindow('win-impressum')"></button>
+        <button class="win-ctrl min" onclick="minWindow('win-impressum')"></button>
+        <button class="win-ctrl max" onclick="maxWindow('win-impressum')"></button>
+      </div>
+      <div class="win-title">📋 Impressum</div>
+    </div>
+    <div class="win-body">
+      <div class="admin-bar" id="admin-impressum-bar" style="padding:10px 20px;">
+        <button class="news-add-btn" onclick="openImpressumModal()">✏️ Impressum bearbeiten</button>
+      </div>
+      <div class="impressum-content" id="impressum-content"></div>
+    </div>
+    <div class="resize-handle" onmousedown="startResize(event,'win-impressum')"></div>
+  </div>
+
+  <!-- WINDOW: SETTINGS -->
+  <div class="window" id="win-settings" style="width:470px;height:430px;top:115px;left:330px;">
+    <div class="win-header" onmousedown="startDrag(event,'win-settings')">
+      <div class="win-controls">
+        <button class="win-ctrl close" onclick="closeWindow('win-settings')"></button>
+        <button class="win-ctrl min" onclick="minWindow('win-settings')"></button>
+        <button class="win-ctrl max" onclick="maxWindow('win-settings')"></button>
+      </div>
+      <div class="win-title">⚙️ Einstellungen</div>
+    </div>
+    <div class="win-body" id="settings-body"></div>
+    <div class="resize-handle" onmousedown="startResize(event,'win-settings')"></div>
+  </div>
+</div>
+
+
+<!-- ======== GAME LAUNCH OVERLAY ======== -->
+<div id="game-launch-overlay">
+  <div class="launch-header">
+    <div id="launch-game-emoji" style="font-size:18px;">🎮</div>
+    <div class="launch-title" id="launch-game-title">SPIEL WIRD GELADEN</div>
+    <button class="launch-close" onclick="closeLaunchOverlay()">✕ SCHLIESSEN</button>
+  </div>
+  <iframe id="game-launch-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" allowfullscreen></iframe>
+</div>
+
+<!-- ======== ONLINE USERS BAR ======== -->
+<div id="online-bar">
+  <div class="online-bar-title">🟢 Online Jetzt</div>
+  <div id="online-users-list"></div>
+</div>
+<!-- ======== TASKBAR ======== -->
+<div id="taskbar">
+  <button class="tb-btn" onclick="openWindow('win-news');focusWindow('win-news');" id="tb-news">📰 News</button>
+  <button class="tb-btn" onclick="openWindow('win-games');focusWindow('win-games');" id="tb-games">🎮 Games</button>
+  <button class="tb-btn" onclick="openWindow('win-forums');focusWindow('win-forums');" id="tb-forums">💬 Forums</button>
+  <button class="tb-btn" onclick="openWindow('win-support');focusWindow('win-support');" id="tb-support">🎧 Support</button>
+  <button class="tb-btn" onclick="openWindow('win-impressum');focusWindow('win-impressum');" id="tb-impressum">📋 Impressum</button>
+  <button class="tb-btn" onclick="openWindow('win-settings');focusWindow('win-settings');" id="tb-settings">⚙️ Settings</button>
+  <div class="taskbar-right">
+    <button id="online-toggle" onclick="toggleOnlineBar()"><div class="online-pulse"></div><span id="online-count-label">0 Online</span></button>
+    <div id="guest-badge">👁 Gast</div>
+    <div id="user-badge" style="display:none;align-items:center;gap:6px;padding:4px 10px;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.25);border-radius:6px;font-size:11px;color:var(--accent);font-weight:600;letter-spacing:0.3px;cursor:pointer;" onclick="openProfileModal()"><div class="user-avatar" id="taskbar-avatar">👤</div><span id="user-badge-name">User</span></div>
+    <div id="admin-indicator">🔑 Admin</div>
+    <button class="tb-action-btn" id="login-btn" onclick="showLoginOverlay()" style="display:none;">Anmelden</button>
+    <button class="tb-action-btn danger" id="logout-btn" style="display:none;" onclick="logout()">Abmelden</button>
+    <div class="tb-separator"></div>
+    <div id="taskbar-clock">00:00</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   🎮  NEXUS — SPIELE EINBINDEN (Entwickler-Anleitung)
+   ============================================================
+
+   METHODE 1 — HTML-DATEI HOCHLADEN (empfohlen für lokale Spiele)
+   ---------------------------------------------------------------
+   1. Spiel als einzelne .html-Datei erstellen (alles in einer Datei:
+      HTML + CSS + JavaScript, keine externen Abhängigkeiten nötig).
+   2. Als Admin: Games-Fenster öffnen → "＋ Spiel hinzufügen"
+   3. Im Modal: Tab "📂 HTML-Datei hochladen" wählen
+   4. Deine .html-Datei auswählen — sie wird als base64 im
+      localStorage gespeichert und direkt im iframe gestartet.
+
+   METHODE 2 — EXTERNE URL (für Hosting / itch.io / eigene Server)
+   ----------------------------------------------------------------
+   1. Spiel irgendwo hosten (eigener Server, itch.io-Embed usw.)
+   2. Als Admin: "➕ Spiel hinzufügen" → Tab "🔗 Externe URL"
+   3. URL eintragen, z.B.: https://itch.io/embed-upload/...
+
+   SPIEL-DATEI ERSTELLEN — Minimal-Template
+   -----------------------------------------
+   Erstelle eine .html-Datei: DOCTYPE + head (UTF-8, CSS) + body + canvas.
+   Alles in einer Datei, keine externen Abhaengigkeiten noetig.
+
+   HINWEISE
+   --------
+   • localStorage-Limit: ~5–10 MB (Browser-abhängig).
+     Große Spiele → externe URL bevorzugen.
+   • Der iframe hat das sandbox-Attribut:
+     allow-scripts | allow-same-origin | allow-forms | allow-popups
+   • Kein Internetzugriff aus dem iframe heraus nötig — reine
+     canvas/JS-Spiele funktionieren vollständig offline.
+   ============================================================ */
+// Default-Daten (Fallback wenn Firebase + localStorage leer)
+const DEFAULT_DATA = {
+  siteName: 'NEXUS',
+  tagline: 'Deine Gaming-Community',
+  adminUser: 'admin',
+  adminPass: 'admin123',
+  users: [],
+  news: [
+    { id:1, date:'28.05.2025', title:'Willkommen auf unserer Seite!', body:'Schau dich um und entdecke alle Features. Mehr News folgen bald.' },
+    { id:2, date:'15.05.2025', title:'Server-Update v2.1', body:'Neues Update mit verbesserter Performance und Bugfixes.' }
+  ],
+  games: [],
+  forums: {
+    categories: [
+      { id:1, name:'Allgemein', desc:'Alles rund um Gaming', posts:[
+        { user:'CoolGamer92', body:'Willkommen im Forum! Hier könnt ihr über eure Lieblingsspiele diskutieren.', date:'28.05.2025' },
+        { user:'ProPlayer', body:'Schaut auch die Games-Kategorie an, dort findet ihr alle verfügbaren Titel!', date:'28.05.2025' }
+      ] },
+      { id:2, name:'Spiel-Support', desc:'Hilfe bei Spielen', posts:[
+        { user:'HelpWanted', body:'Kann mir jemand bei Level 5 helfen? Ich komme einfach nicht weiter...', date:'27.05.2025' }
+      ] },
+      { id:3, name:'Events', desc:'Gemeinschaftliche Events', posts:[
+        { user:'EventMaster', body:'Großes Gaming-Turnier nächsten Monat! Wer interessiert sich?', date:'26.05.2025' }
+      ] }
+    ]
+  },
+  supportTickets: [
+    { id:1, user:'Player123', title:'Account-Problem', body:'Kann mein Passwort nicht zurücksetzen', status:'open', date:'28.05.2025' },
+    { id:2, user:'NewUser', title:'Technische Frage', body:'Welche Browser werden unterstützt?', status:'closed', date:'27.05.2025' }
+  ],
+  impressum: {
+    name:'Max Mustermann', street:'Musterstraße 1',
+    city:'12345 Musterstadt', email:'info@example.com',
+    phone:'+49 123 456789',
+    note:'Diese Website ist ein privates Projekt ohne kommerzielle Absichten.'
+  }
+};
+
+// Daten initialisieren: localStorage zuerst, dann Firebase überschreibt
+let data = JSON.parse(localStorage.getItem('nexus_data_v2') || 'null') || JSON.parse(JSON.stringify(DEFAULT_DATA));
+
+let isAdmin = false, isGuest = false, isUser = false, currentUser = null, zTop = 200;
+let activeGameIdx = null, activeCategoryIdx = null, activeForumPostIdx = null;
+window.nexusData = data; // globale Referenz für Firebase-Modul
+window._nexusReady = false;
+
+// Wenn Firebase bereit ist: Daten mergen und UI neu rendern
+window.addEventListener('nexus-firebase-ready', function(e){
+  if(e.detail){
+    // Firebase hat Daten → übernehmen, aber lokale playFiles behalten
+    const remote = e.detail;
+    const localGames = data.games || [];
+    data = remote;
+    data.games = (data.games||[]).map((rg, i) => {
+      if(localGames[i] && localGames[i].playFile) rg.playFile = localGames[i].playFile;
+      return rg;
+    });
+    localStorage.setItem('nexus_data_v2', JSON.stringify(data));
+    window.nexusData = data;
+  } else {
+    // Kein Firebase-Eintrag → lokale Daten einmalig hochladen
+    if(window.fbSave) window.fbSave(data);
+  }
+  window._nexusReady = true;
+  // UI neu rendern mit aktuellen Daten
+  renderNews(); renderGames(); renderForums(); renderSupportTickets();
+  applyBranding(); renderImpressumContent();
+});
+
+// ====== FIREBASE + LOCALSTORAGE SYNC ======
+let _fbReady = false;
+
+// Speichern: immer localStorage + Firebase wenn verfügbar
+function save(){
+  localStorage.setItem('nexus_data_v2', JSON.stringify(data));
+  if(window.fbSave) window.fbSave(data);
+}
+
+// Remote-Update Handler: wenn ein anderer Tab/User Daten ändert
+window.nexusOnRemoteUpdate = function(remote){
+  // Passwörter & lokale Spieldateien schützen
+  const localGames = data.games || [];
+  data = remote;
+  data.games = (data.games||[]).map((rg, i) => {
+    if(localGames[i] && localGames[i].playFile) rg.playFile = localGames[i].playFile;
+    return rg;
+  });
+  localStorage.setItem('nexus_data_v2', JSON.stringify(data));
+  renderNews(); renderGames(); renderForums(); renderSupportTickets();
+  showNotif('🔄','Live-Update','Daten wurden von einem anderen Nutzer aktualisiert.','info');
+};
+
+// ====== GAME DATA HELPERS ======
+function getGame(idx){ return data.games[idx]; }
+function ensureGameExtra(idx){
+  const g = data.games[idx];
+  if(!g.description) g.description = '';
+  if(!g.bannerUrl) g.bannerUrl = '';
+  if(!g.images) g.images = [];
+  if(!g.patches) g.patches = [];
+  if(!g.roadmap) g.roadmap = [];
+}
+
+// ====== AUTH ======
+function switchLoginTab(tab){
+  document.querySelectorAll('.login-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.login-tab-content').forEach(c=>c.style.display='none');
+  if(tab==='user'){
+    document.querySelector('.login-tab:nth-child(1)').classList.add('active');
+    document.getElementById('user-tab').style.display='block';
+    document.getElementById('user-login-user').focus();
+  } else {
+    document.querySelector('.login-tab:nth-child(2)').classList.add('active');
+    document.getElementById('admin-tab').style.display='block';
+    document.getElementById('admin-login-user').focus();
+  }
+}
+
+function tryUserLogin(){
+  const u = document.getElementById('user-login-user').value.trim();
+  const p = document.getElementById('user-login-pass').value;
+  if(!u || !p){ showNotif('⚠️','Fehlende Eingabe','Bitte Benutzername und Passwort eingeben.','warn'); return; }
+  const user = data.users.find(u2=>u2.name===u && u2.pass===p);
+  if(user){
+    isUser=true; isAdmin=false; isGuest=false; currentUser=user.name; hideLoginOverlay();
+    const badge = document.getElementById('user-badge');
+    badge.style.display='flex';
+    document.getElementById('user-badge-name').textContent=currentUser;
+    updateTaskbarAvatar(user.avatar||null);
+    document.getElementById('guest-badge').classList.remove('show');
+    document.getElementById('admin-indicator').classList.remove('show');
+    document.getElementById('logout-btn').style.display='flex';
+    document.getElementById('login-btn').style.display='none';
+    const adminForumsBar = document.getElementById('admin-forums-bar');
+    if(adminForumsBar) adminForumsBar.style.display='none';
+    renderNews(); renderGames(); renderSettings(); renderForums(); renderSupportTickets();
+    updateOnlineStatus(true);
+    showNotif('👤','Willkommen zurück!','Du bist jetzt als <strong>'+currentUser+'</strong> angemeldet.','success');
+  } else {
+    const err = document.getElementById('user-login-err');
+    err.textContent = '❌ Benutzername oder Passwort falsch';
+    err.style.display='block';
+    setTimeout(()=>err.style.display='none', 2500);
+    showNotif('❌','Anmeldung fehlgeschlagen','Falscher Benutzername oder Passwort.','error');
+  }
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const passField = document.getElementById('user-login-pass');
+  if(passField) passField.addEventListener('keydown', e=>{ if(e.key==='Enter') tryUserLogin(); });
+});
+
+function registerNewUser(){
+  const u = document.getElementById('user-reg-user').value.trim();
+  const p = document.getElementById('user-reg-pass').value;
+  const p2 = document.getElementById('user-reg-pass2').value;
+  const err = document.getElementById('user-login-err');
+
+  if(!u || !p || !p2){
+    err.textContent = '❌ Alle Felder sind erforderlich';
+    err.style.display='block'; err.style.color='var(--danger)';
+    setTimeout(()=>err.style.display='none', 2500); return;
+  }
+  if(u.length < 3){
+    err.textContent = '❌ Benutzername mindestens 3 Zeichen';
+    err.style.display='block'; err.style.color='var(--danger)';
+    setTimeout(()=>err.style.display='none', 2500); return;
+  }
+  if(p.length < 4){
+    err.textContent = '❌ Passwort mindestens 4 Zeichen';
+    err.style.display='block'; err.style.color='var(--danger)';
+    setTimeout(()=>err.style.display='none', 2500); return;
+  }
+  if(p!==p2){
+    err.textContent = '❌ Passwörter stimmen nicht überein';
+    err.style.display='block'; err.style.color='var(--danger)';
+    setTimeout(()=>err.style.display='none', 2500); return;
+  }
+  if(data.users.find(u2=>u2.name.toLowerCase()===u.toLowerCase())){
+    err.textContent = '❌ Benutzername bereits vergeben';
+    err.style.display='block'; err.style.color='var(--danger)';
+    setTimeout(()=>err.style.display='none', 2500); return;
+  }
+  data.users.push({name:u, pass:p, avatar:null, joinDate: new Date().toLocaleDateString('de-DE')});
+  save();
+  document.getElementById('user-reg-user').value='';
+  document.getElementById('user-reg-pass').value='';
+  document.getElementById('user-reg-pass2').value='';
+  document.getElementById('user-login-user').value=u;
+  document.getElementById('user-login-pass').value=p;
+  err.textContent='✅ Registrierung erfolgreich!';
+  err.style.color='var(--success)'; err.style.display='block';
+  showNotif('🎉','Willkommen bei NEXUS!','Dein Konto wurde erstellt. Du wirst jetzt angemeldet…','success');
+  setTimeout(()=>{ err.style.color='var(--danger)'; err.style.display='none'; tryUserLogin(); }, 1500);
+}
+
+function tryAdminLogin(){
+  const u = document.getElementById('admin-login-user').value.trim();
+  const p = document.getElementById('admin-login-pass').value;
+  if(u === data.adminUser && p === data.adminPass){
+    isAdmin=true; isUser=false; isGuest=false; currentUser=data.adminUser; hideLoginOverlay();
+    document.getElementById('admin-indicator').classList.add('show');
+    document.getElementById('guest-badge').classList.remove('show');
+    document.getElementById('user-badge').style.display='none';
+    document.getElementById('logout-btn').style.display='flex';
+    document.getElementById('login-btn').style.display='none';
+    document.getElementById('admin-news-bar').classList.add('show');
+    document.getElementById('admin-games-bar').classList.add('show');
+    document.getElementById('admin-impressum-bar').classList.add('show');
+    const adminForumsBar = document.getElementById('admin-forums-bar');
+    if(adminForumsBar) adminForumsBar.style.display='block';
+    renderNews(); renderGames(); renderSettings(); renderForums(); renderSupportTickets();
+    updateOnlineStatus(true);
+    showNotif('🔑','Admin-Modus aktiv','Du bist als Administrator angemeldet.','warn');
+  } else {
+    const err = document.getElementById('admin-login-err');
+    err.style.display='block';
+    setTimeout(()=>err.style.display='none', 2500);
+    showNotif('🔒','Zugang verweigert','Falscher Admin-Benutzername oder Passwort.','error');
+  }
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const adminPassField = document.getElementById('admin-login-pass');
+  if(adminPassField) adminPassField.addEventListener('keydown', e=>{ if(e.key==='Enter') tryAdminLogin(); });
+});
+function enterAsGuest(){
+  isAdmin=false; isGuest=true; isUser=false; currentUser=null; hideLoginOverlay();
+  document.getElementById('guest-badge').classList.add('show');
+  document.getElementById('user-badge').style.display='none';
+  document.getElementById('admin-indicator').classList.remove('show');
+  document.getElementById('logout-btn').style.display='none';
+  document.getElementById('login-btn').style.display='flex';
+  const adminForumsBar = document.getElementById('admin-forums-bar');
+  if(adminForumsBar) adminForumsBar.style.display='none';
+  renderNews(); renderGames(); renderSettings(); renderForums(); renderSupportTickets();
+  setTimeout(()=>openWindow('win-news'),100);
+  setTimeout(()=>showNotif('👁','Gast-Modus','Du bist als Gast angemeldet. Registriere dich für mehr Features!','info'), 600);
+}
+function logout(){
+  const wasAdmin = isAdmin;
+  const wasUser = currentUser;
+  isAdmin=false; isGuest=false; isUser=false; currentUser=null;
+  document.getElementById('admin-indicator').classList.remove('show');
+  document.getElementById('guest-badge').classList.remove('show');
+  document.getElementById('user-badge').style.display='none';
+  document.getElementById('logout-btn').style.display='none';
+  updateTaskbarAvatar(null);
+  document.getElementById('login-btn').style.display='none';
+  document.getElementById('admin-news-bar').classList.remove('show');
+  document.getElementById('admin-games-bar').classList.remove('show');
+  document.getElementById('admin-impressum-bar').classList.remove('show');
+  const adminForumsBar = document.getElementById('admin-forums-bar');
+  if(adminForumsBar) adminForumsBar.style.display='none';
+  showLoginOverlay(); renderSettings(); renderForums(); renderSupportTickets();
+  setTimeout(()=>showNotif('👋','Abgemeldet', wasAdmin ? 'Admin-Sitzung beendet.' : 'Du wurdest als <strong>'+(wasUser||'User')+'</strong> abgemeldet.','info'), 300);
+}
+function showLoginOverlay(){
+  document.getElementById('login-overlay').style.display='flex';
+  switchLoginTab('user');
+  document.getElementById('user-login-user').value='';
+  document.getElementById('user-login-pass').value='';
+  document.getElementById('user-reg-user').value='';
+  document.getElementById('user-reg-pass').value='';
+  document.getElementById('user-reg-pass2').value='';
+  document.getElementById('admin-login-user').value='';
+  document.getElementById('admin-login-pass').value='';
+}
+function hideLoginOverlay(){ document.getElementById('login-overlay').style.display='none'; }
+
+// ====== WINDOWS ======
+let dragState=null, resizeState=null;
+function openWindow(id){ const w=document.getElementById(id); w.classList.add('open'); focusWindow(id); }
+function closeWindow(id){ document.getElementById(id).classList.remove('open','focused'); updateTaskbar(id,false); }
+function minWindow(id){ closeWindow(id); }
+function maxWindow(id){
+  const w=document.getElementById(id);
+  if(w.dataset.maxed==='1'){
+    w.style.left=w.dataset.ox; w.style.top=w.dataset.oy;
+    w.style.width=w.dataset.ow; w.style.height=w.dataset.oh;
+    w.dataset.maxed='0';
+  } else {
+    w.dataset.ox=w.style.left; w.dataset.oy=w.style.top;
+    w.dataset.ow=w.style.width; w.dataset.oh=w.style.height;
+    w.style.left='0'; w.style.top='0';
+    w.style.width='100vw'; w.style.height='calc(100vh - 52px)';
+    w.dataset.maxed='1';
+  }
+}
+function focusWindow(id){
+  document.querySelectorAll('.window').forEach(w=>w.classList.remove('focused'));
+  const w=document.getElementById(id);
+  if(w.classList.contains('open')){ w.classList.add('focused'); w.style.zIndex=++zTop; }
+  updateTaskbar(id,true);
+}
+function updateTaskbar(id,active){
+  const map={'win-news':'tb-news','win-games':'tb-games','win-forums':'tb-forums','win-support':'tb-support','win-impressum':'tb-impressum','win-settings':'tb-settings'};
+  if(map[id]){
+    if(active) document.getElementById(map[id]).classList.add('active');
+    else document.getElementById(map[id]).classList.remove('active');
+  }
+}
+function startDrag(e,id){
+  if(e.target.classList.contains('win-ctrl')) return;
+  const w=document.getElementById(id); focusWindow(id);
+  dragState={id,startX:e.clientX,startY:e.clientY,
+    ox:parseInt(w.style.left)||w.getBoundingClientRect().left,
+    oy:parseInt(w.style.top)||w.getBoundingClientRect().top};
+}
+function startResize(e,id){
+  e.stopPropagation(); const w=document.getElementById(id);
+  resizeState={id,startX:e.clientX,startY:e.clientY,ow:w.offsetWidth,oh:w.offsetHeight};
+}
+document.addEventListener('mousemove',e=>{
+  if(dragState){
+    const w=document.getElementById(dragState.id);
+    w.style.left=(dragState.ox+e.clientX-dragState.startX)+'px';
+    w.style.top=Math.max(0,dragState.oy+e.clientY-dragState.startY)+'px';
+  }
+  if(resizeState){
+    const w=document.getElementById(resizeState.id);
+    w.style.width=Math.max(300,resizeState.ow+e.clientX-resizeState.startX)+'px';
+    w.style.height=Math.max(200,resizeState.oh+e.clientY-resizeState.startY)+'px';
+  }
+});
+document.addEventListener('mouseup',()=>{ dragState=null; resizeState=null; });
+
+// ====== CLOCK ======
+function updateClock(){
+  document.getElementById('taskbar-clock').textContent =
+    new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(updateClock,1000); updateClock();
+
+// ====== BRANDING ======
+function applyBranding(){
+  ['news','games'].forEach(k=>{
+    const n=document.getElementById('preview-name-'+k);
+    const t=document.getElementById('preview-tag-'+k);
+    if(n) n.textContent=data.siteName;
+    if(t) t.textContent=data.tagline;
+  });
+  document.getElementById('login-site-name').textContent=data.siteName;
+  document.title=data.siteName;
+}
+
+// ====== RENDER NEWS ======
+function renderNews(){
+  const el=document.getElementById('news-list');
+  if(!data.news.length){
+    el.innerHTML='<div style="padding:28px;color:var(--muted);text-align:center;font-size:13px;font-style:italic;">Noch keine News vorhanden.</div>';
+    return;
+  }
+  el.innerHTML=data.news.map((n,i)=>`
+    <div class="news-item">
+      <div class="news-item-date">${n.date}</div>
+      <div class="news-item-title">${n.title}</div>
+      <div class="news-item-body">${n.body}</div>
+      ${isAdmin?`<div class="edit-actions">
+        <button class="edit-btn" onclick="openNewsModal(${i})">✏️ Bearbeiten</button>
+        <button class="edit-btn del" onclick="deleteNews(${i})">🗑️ Löschen</button>
+      </div>`:''}
+    </div>`).join('');
+}
+
+// ====== RENDER GAMES ======
+function renderGames(){
+  const el=document.getElementById('games-grid');
+  if(!data.games.length){
+    el.innerHTML=`
+      <div class="games-empty-state">
+        <div class="games-empty-icon">🎮</div>
+        <div class="games-empty-title">Keine Spiele vorhanden</div>
+        <div class="games-empty-sub">${isAdmin?'Klicke auf "+ Spiel hinzufügen" um das erste Spiel zu erstellen.':'Noch keine Spiele hinzugefügt. Schau später wieder rein!'}</div>
+      </div>`;
+    return;
+  }
+  el.innerHTML=data.games.map((g,i)=>`
+    <div class="game-card" onclick="openGameDetail(${i})">
+      <div class="game-thumb" style="background:${g.color}18;">
+        ${g.bannerUrl?`<img src="${g.bannerUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;" onerror="this.style.display='none'">`:''}
+        <span style="position:relative;z-index:1;">${g.emoji}</span>
+      </div>
+      <div class="game-info">
+        <div class="game-name">${g.name}</div>
+        <div class="game-genre">${g.genre}</div>
+        ${isAdmin?`<div class="game-admin-actions" onclick="event.stopPropagation()">
+          <button class="edit-btn" onclick="openGameModal(${i})">✏️</button>
+          <button class="edit-btn del" onclick="deleteGame(${i})">🗑️</button>
+        </div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+// ====== GAME DETAIL ======
+let currentGdTab = 0;
+function openGameDetail(idx){
+  activeGameIdx = idx;
+  ensureGameExtra(idx);
+  const g = data.games[idx];
+  document.getElementById('gd-emoji-el').textContent = g.emoji;
+  document.getElementById('gd-emoji-el').style.background = g.color+'18';
+  document.getElementById('gd-title-el').textContent = g.name;
+  document.getElementById('gd-genre-el').textContent = g.genre;
+  currentGdTab = 0;
+  // reset tabs
+  document.querySelectorAll('.gd-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  document.querySelectorAll('.gd-panel').forEach((p,i)=>p.classList.toggle('active',i===0));
+  renderGdOverview();
+  renderGdImages();
+  renderGdPatches();
+  renderGdRoadmap();
+  document.getElementById('game-detail-overlay').classList.add('show');
+}
+function closeGameDetail(){
+  document.getElementById('game-detail-overlay').classList.remove('show');
+  activeGameIdx = null;
+}
+document.getElementById('game-detail-overlay').addEventListener('click',function(e){
+  if(e.target===this) closeGameDetail();
+});
+function gdTab(i){
+  currentGdTab = i;
+  document.querySelectorAll('.gd-tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+  document.querySelectorAll('.gd-panel').forEach((p,j)=>p.classList.toggle('active',j===i));
+}
+
+function renderGdOverview(){
+  if(activeGameIdx===null) return;
+  const g = data.games[activeGameIdx];
+  // Banner
+  const bwrap = document.getElementById('gd-banner-wrap');
+  if(g.bannerUrl){
+    bwrap.innerHTML=`<img src="${g.bannerUrl}" class="gd-banner-img" onerror="this.parentElement.innerHTML='<div class=gd-banner-placeholder><div class=ph-icon>🖼️</div><div class=ph-text>Kein Bild verfügbar</div></div>'">`;
+  } else {
+    bwrap.innerHTML=`<div class="gd-banner-placeholder" onclick="${isAdmin?'document.getElementById(\'gd-banner-url\').focus()':''}"><div class="ph-icon">🖼️</div><div class="ph-text">${isAdmin?'Banner-URL im Admin-Bereich eintragen':'Kein Banner vorhanden'}</div></div>`;
+  }
+  // Description
+  const descEl = document.getElementById('gd-desc-el');
+  if(g.description){
+    descEl.textContent = g.description;
+    descEl.classList.remove('gd-desc-empty');
+    descEl.classList.add('gd-desc');
+  } else {
+    descEl.textContent = 'Noch keine Beschreibung vorhanden.';
+    descEl.classList.add('gd-desc-empty');
+    descEl.classList.remove('gd-desc');
+  }
+  // Play button
+  let playBtnWrap = document.getElementById('gd-play-btn-wrap');
+  if(!playBtnWrap){
+    playBtnWrap = document.createElement('div');
+    playBtnWrap.id='gd-play-btn-wrap';
+    playBtnWrap.style.cssText='margin-bottom:16px;';
+    document.getElementById('gd-panel-0').insertBefore(playBtnWrap, document.getElementById('gd-desc-el'));
+  }
+  const g2 = data.games[activeGameIdx];
+  playBtnWrap.innerHTML=`<button onclick="launchGame(${activeGameIdx})" style="padding:10px 22px;background:${g2.color||'var(--accent)'};color:#000;border:none;border-radius:9px;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;cursor:pointer;box-shadow:0 4px 20px ${g2.color||'rgba(0,229,255,0.3)'}55;transition:opacity 0.2s;">▶ JETZT SPIELEN</button>`;
+
+  // Admin section
+  const adminSec = document.getElementById('gd-admin-overview');
+  if(isAdmin){
+    adminSec.style.display='block';
+    document.getElementById('gd-desc-input').value = g.description || '';
+    document.getElementById('gd-banner-url').value = g.bannerUrl || '';
+  } else {
+    adminSec.style.display='none';
+  }
+}
+
+function saveGameOverview(){
+  if(activeGameIdx===null) return;
+  data.games[activeGameIdx].description = document.getElementById('gd-desc-input').value.trim();
+  data.games[activeGameIdx].bannerUrl = document.getElementById('gd-banner-url').value.trim();
+  save(); renderGames(); renderGdOverview();
+  const btn = document.querySelector('.gd-save-btn');
+  const orig = btn.textContent; btn.textContent='✅ GESPEICHERT';
+  setTimeout(()=>btn.textContent=orig, 1500);
+}
+
+function renderGdImages(){
+  if(activeGameIdx===null) return;
+  const g = data.games[activeGameIdx];
+  const grid = document.getElementById('gd-images-grid');
+  let html = '';
+  (g.images||[]).forEach((img,i)=>{
+    html+=`<div class="gd-img-slot">
+      <img src="${img.url}" alt="${img.caption||''}" onerror="this.src=''">
+      <div class="img-overlay">
+        ${isAdmin?`<button class="edit-btn del" onclick="deleteGameImage(${i});event.stopPropagation()">🗑️</button>`:''}
+      </div>
+    </div>`;
+  });
+  if(!g.images||g.images.length===0){
+    html+=`<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--muted);font-size:13px;font-style:italic;">Noch keine Bilder vorhanden.</div>`;
+  }
+  grid.innerHTML=html;
+  document.getElementById('gd-admin-images').style.display=isAdmin?'block':'none';
+}
+
+function addGameImage(){
+  if(activeGameIdx===null) return;
+  const url = document.getElementById('gd-add-img-url').value.trim();
+  const cap = document.getElementById('gd-add-img-caption').value.trim();
+  if(!url) return;
+  data.games[activeGameIdx].images.push({url, caption:cap});
+  save(); renderGdImages();
+  document.getElementById('gd-add-img-url').value='';
+  document.getElementById('gd-add-img-caption').value='';
+}
+
+function deleteGameImage(i){
+  if(!confirm('Bild löschen?')) return;
+  data.games[activeGameIdx].images.splice(i,1);
+  save(); renderGdImages();
+}
+
+function renderGdPatches(){
+  if(activeGameIdx===null) return;
+  const g = data.games[activeGameIdx];
+  const el = document.getElementById('gd-patches-list');
+  document.getElementById('gd-admin-patches').style.display=isAdmin?'block':'none';
+  if(!g.patches||!g.patches.length){
+    el.innerHTML=`<div class="patch-empty">Noch keine Patch Notes vorhanden.</div>`;
+    return;
+  }
+  el.innerHTML=(g.patches||[]).map((p,i)=>`
+    <div class="patch-note">
+      <div class="patch-meta">
+        <span class="patch-version">${p.version}</span>
+        <span class="patch-date">${p.date}</span>
+        ${isAdmin?`<div class="edit-actions" style="margin-left:auto;margin-top:0">
+          <button class="edit-btn" onclick="openPatchModal(${i})">✏️</button>
+          <button class="edit-btn del" onclick="deletePatch(${i})">🗑️</button>
+        </div>`:''}
+      </div>
+      <div class="patch-title">${p.title}</div>
+      <div class="patch-body">${p.body}</div>
+    </div>`).join('');
+}
+
+function renderGdRoadmap(){
+  if(activeGameIdx===null) return;
+  const g = data.games[activeGameIdx];
+  const el = document.getElementById('gd-roadmap-list');
+  document.getElementById('gd-admin-roadmap').style.display=isAdmin?'block':'none';
+  if(!g.roadmap||!g.roadmap.length){
+    el.innerHTML=`<div class="rm-empty">Noch keine Roadmap-Einträge vorhanden.</div>`;
+    return;
+  }
+  el.innerHTML=(g.roadmap||[]).map((r,i)=>`
+    <div class="roadmap-item">
+      <div class="rm-status ${r.status}"></div>
+      <div class="rm-content">
+        <div class="rm-title">${r.title}</div>
+        ${r.desc?`<div class="rm-desc">${r.desc}</div>`:''}
+      </div>
+      <span class="rm-badge ${r.status}">${r.status==='done'?'Fertig':r.status==='wip'?'In Arbeit':'Geplant'}</span>
+      ${isAdmin?`<div class="edit-actions" style="margin-left:8px;flex-shrink:0">
+        <button class="edit-btn" onclick="openRoadmapModal(${i})">✏️</button>
+        <button class="edit-btn del" onclick="deleteRoadmapItem(${i})">🗑️</button>
+      </div>`:''}
+    </div>`).join('');
+}
+
+// ====== PATCH MODAL ======
+function openPatchModal(idx){
+  const isEdit = idx!==undefined;
+  const p = isEdit ? data.games[activeGameIdx].patches[idx] : {version:'v1.0.0',date:new Date().toLocaleDateString('de-DE'),title:'',body:''};
+  const m = document.createElement('div');
+  m.className='modal-overlay'; m.id='active-modal';
+  m.innerHTML=`<div class="modal-box">
+    <div class="modal-title">${isEdit?'✏️ Patch Note bearbeiten':'➕ Patch Note hinzufügen'}</div>
+    <input class="modal-input" id="p-version" placeholder="Version (z.B. v1.2.0)" value="${p.version}">
+    <input class="modal-input" id="p-date" placeholder="Datum" value="${p.date}">
+    <input class="modal-input" id="p-title" placeholder="Titel" value="${p.title}">
+    <textarea class="modal-textarea" id="p-body" placeholder="Änderungen, Fixes, Features...">${p.body}</textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="savePatch(${isEdit?idx:'null'})">Speichern</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+  document.getElementById('p-title').focus();
+}
+function savePatch(idx){
+  const item={
+    version:document.getElementById('p-version').value.trim()||'v1.0.0',
+    date:document.getElementById('p-date').value.trim()||new Date().toLocaleDateString('de-DE'),
+    title:document.getElementById('p-title').value.trim(),
+    body:document.getElementById('p-body').value.trim()
+  };
+  if(!item.title) return;
+  const patches = data.games[activeGameIdx].patches;
+  if(idx===null||idx===undefined) patches.unshift(item);
+  else patches[idx]=item;
+  save(); renderGdPatches(); closeModal();
+}
+function deletePatch(idx){
+  if(!confirm('Patch Note löschen?')) return;
+  data.games[activeGameIdx].patches.splice(idx,1);
+  save(); renderGdPatches();
+}
+
+// ====== ROADMAP MODAL ======
+function openRoadmapModal(idx){
+  const isEdit = idx!==undefined;
+  const r = isEdit ? data.games[activeGameIdx].roadmap[idx] : {title:'',desc:'',status:'planned'};
+  const m = document.createElement('div');
+  m.className='modal-overlay'; m.id='active-modal';
+  m.innerHTML=`<div class="modal-box">
+    <div class="modal-title">${isEdit?'✏️ Roadmap-Eintrag bearbeiten':'➕ Roadmap-Eintrag hinzufügen'}</div>
+    <input class="modal-input" id="r-title" placeholder="Titel / Feature-Name" value="${r.title}">
+    <textarea class="modal-textarea" id="r-desc" placeholder="Beschreibung (optional)...">${r.desc||''}</textarea>
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Status</div>
+      <div style="display:flex;gap:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text);">
+          <input type="radio" name="rm-status" value="planned" ${r.status==='planned'?'checked':''} style="accent-color:var(--muted)"> Geplant
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text);">
+          <input type="radio" name="rm-status" value="wip" ${r.status==='wip'?'checked':''} style="accent-color:var(--warning)"> In Arbeit
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text);">
+          <input type="radio" name="rm-status" value="done" ${r.status==='done'?'checked':''} style="accent-color:var(--success)"> Fertig
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveRoadmapItem(${isEdit?idx:'null'})">Speichern</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+  document.getElementById('r-title').focus();
+}
+function saveRoadmapItem(idx){
+  const status = document.querySelector('input[name="rm-status"]:checked')?.value || 'planned';
+  const item={
+    title:document.getElementById('r-title').value.trim(),
+    desc:document.getElementById('r-desc').value.trim(),
+    status
+  };
+  if(!item.title) return;
+  const roadmap = data.games[activeGameIdx].roadmap;
+  if(idx===null||idx===undefined) roadmap.push(item);
+  else roadmap[idx]=item;
+  save(); renderGdRoadmap(); closeModal();
+}
+function deleteRoadmapItem(idx){
+  if(!confirm('Eintrag löschen?')) return;
+  data.games[activeGameIdx].roadmap.splice(idx,1);
+  save(); renderGdRoadmap();
+}
+
+// ====== IMPRESSUM ======
+function renderImpressumContent(){
+  const im=data.impressum;
+  document.getElementById('impressum-content').innerHTML=`
+    <h3>Angaben gemäß § 5 TMG</h3>
+    <address>${im.name}<br>${im.street}<br>${im.city}</address>
+    <h3>Kontakt</h3>
+    <p>E-Mail: <a href="mailto:${im.email}">${im.email}</a></p>
+    <p>Telefon: <span>${im.phone}</span></p>
+    <h3>Hinweis</h3>
+    <p>${im.note}</p>`;
+}
+
+// ====== SETTINGS ======
+function renderSettings(){
+  const body=document.getElementById('settings-body');
+  if(isUser){
+    body.innerHTML=`
+      <div class="settings-section">
+        <div class="settings-label">👤 Benutzerprofil</div>
+        <div style="padding:16px 0;">
+          <div class="settings-row"><label>Benutzername</label><span style="font-size:14px;color:var(--accent);">${currentUser}</span></div>
+          <div class="settings-row"><label>Beigetreten</label><span style="font-size:12px;color:var(--muted);">Aktiver Benutzer</span></div>
+        </div>
+        <button class="settings-save" style="background:var(--accent3);" onclick="deleteUserAccount()">🗑️ Konto löschen</button>
+      </div>`;
+    return;
+  }
+  if(!isAdmin){
+    body.innerHTML=`<div class="settings-locked">
+      <div class="lock-icon">🔒</div>
+      <p>Die Einstellungen sind nur<br>für Administratoren zugänglich.</p>
+      ${isGuest?`<button class="login-link" onclick="showLoginOverlay()">Als Admin anmelden</button>`:''}
+    </div>`; return;
+  }
+  body.innerHTML=`
+    <div class="settings-section">
+      <div class="settings-label">Website-Branding</div>
+      <div class="settings-row"><label>Site-Name</label><input class="settings-input" id="set-name" value="${data.siteName}"></div>
+      <div class="settings-row"><label>Tagline</label><input class="settings-input" id="set-tag" value="${data.tagline}"></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Admin-Zugangsdaten</div>
+      <div class="settings-row"><label>Benutzername</label><input class="settings-input" id="set-user" value="${data.adminUser}"></div>
+      <div class="settings-row"><label>Neues Passwort</label><input class="settings-input" type="password" id="set-pass" placeholder="Leer = unverändert"></div>
+    </div>
+    <button class="settings-save" onclick="saveSettings()">💾 SPEICHERN</button>`;
+}
+function deleteUserAccount(){
+  if(!confirm('Konto wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+  data.users = data.users.filter(u=>u.name!==currentUser);
+  save();
+  logout();
+}
+function saveSettings(){
+  data.siteName=document.getElementById('set-name').value.trim()||data.siteName;
+  data.tagline=document.getElementById('set-tag').value.trim()||data.tagline;
+  data.adminUser=document.getElementById('set-user').value.trim()||data.adminUser;
+  const np=document.getElementById('set-pass').value;
+  if(np) data.adminPass=np;
+  save(); applyBranding();
+  const btn=document.querySelector('.settings-save');
+  btn.textContent='✅ GESPEICHERT';
+  setTimeout(()=>btn.textContent='💾 SPEICHERN',1500);
+}
+
+// ====== MODALS ======
+function closeModal(){ const m=document.getElementById('active-modal'); if(m) m.remove(); }
+
+function openNewsModal(idx){
+  const isEdit=idx!==undefined;
+  const item=isEdit?data.news[idx]:{date:new Date().toLocaleDateString('de-DE'),title:'',body:''};
+  const m=document.createElement('div'); m.className='modal-overlay'; m.id='active-modal';
+  m.innerHTML=`<div class="modal-box">
+    <div class="modal-title">${isEdit?'✏️ News bearbeiten':'➕ News hinzufügen'}</div>
+    <input class="modal-input" id="m-date" placeholder="Datum" value="${item.date}">
+    <input class="modal-input" id="m-title" placeholder="Titel" value="${item.title}">
+    <textarea class="modal-textarea" id="m-body" placeholder="Text...">${item.body}</textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveNews(${isEdit?idx:'null'})">Speichern</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+  document.getElementById('m-title').focus();
+}
+function saveNews(idx){
+  const item={id:Date.now(),date:document.getElementById('m-date').value.trim()||new Date().toLocaleDateString('de-DE'),title:document.getElementById('m-title').value.trim(),body:document.getElementById('m-body').value.trim()};
+  if(!item.title) return;
+  if(idx===null||idx===undefined) data.news.unshift(item);
+  else data.news[idx]=item;
+  save(); renderNews(); closeModal();
+}
+function deleteNews(idx){ if(!confirm('Wirklich löschen?')) return; data.news.splice(idx,1); save(); renderNews(); }
+
+// ====== GAME MODAL ======
+const COLORS=['#22c55e','#ef4444','#f59e0b','#a78bfa','#00e5ff','#ff6b35','#ec4899','#14b8a6'];
+const EMOJIS=['⛏️','🎯','🏆','⚔️','🎲','🎪','🚀','🔥','🌟','💥','🛡️','🎭'];
+
+function openGameModal(idx){
+  const isEdit=idx!==undefined;
+  const g=isEdit?data.games[idx]:{name:'',genre:'',emoji:'🎮',color:'#00e5ff'};
+  const m=document.createElement('div'); m.className='modal-overlay'; m.id='active-modal';
+  m.innerHTML=`<div class="modal-box">
+    <div class="modal-title">${isEdit?'✏️ Spiel bearbeiten':'➕ Spiel hinzufügen'}</div>
+    <input class="modal-input" id="g-name" placeholder="Name" value="${g.name}">
+    <input class="modal-input" id="g-genre" placeholder="Genre" value="${g.genre}">
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Emoji</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;" id="emoji-picker">
+        ${EMOJIS.map(e=>`<button onclick="setEmoji('${e}',this)" style="width:38px;height:38px;background:var(--bg3);border:2px solid ${e===g.emoji?'var(--accent)':'transparent'};border-radius:9px;font-size:21px;cursor:pointer;transition:border-color 0.15s">${e}</button>`).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Farbe</div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px;" id="color-picker">
+        ${COLORS.map(c=>`<button onclick="setColor('${c}',this)" style="width:28px;height:28px;background:${c};border:3px solid ${c===g.color?'white':'transparent'};border-radius:50%;cursor:pointer;transition:border-color 0.15s"></button>`).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">▶ Spielquelle</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button id="src-tab-file" onclick="switchSrcTab('file')" style="flex:1;padding:7px;background:rgba(0,229,255,0.08);border:1px solid var(--accent);border-radius:7px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-transform:uppercase;">📂 HTML-Datei hochladen</button>
+        <button id="src-tab-url" onclick="switchSrcTab('url')" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:7px;color:var(--muted);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-transform:uppercase;">🔗 Externe URL</button>
+      </div>
+      <div id="src-panel-file">
+        <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:18px;background:var(--bg3);border:2px dashed var(--border2);border-radius:9px;cursor:pointer;transition:border-color 0.2s;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:0.5px;" id="game-file-label" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+          <span style="font-size:28px;">🎮</span>
+          <span id="game-file-name">${isEdit&&g.playFile?'✅ Spieldatei vorhanden':'HTML-Spieldatei auswählen (.html)'}</span>
+          <input type="file" id="game-file-input" accept=".html,text/html" style="display:none;" onchange="handleGameFileUpload(event)">
+        </label>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px;opacity:0.7;">Nur .html-Dateien · Max. empfohlen 5 MB · Wird lokal im Browser gespeichert</div>
+      </div>
+      <div id="src-panel-url" style="display:none;">
+        <input class="modal-input" id="g-url" placeholder="https://... (externe Spiel-URL oder iframe-kompatible Seite)" value="${isEdit&&g.playUrl&&!g.playFile?g.playUrl:''}" style="margin-bottom:0;">
+        <div style="font-size:10px;color:var(--muted);margin-top:6px;opacity:0.7;">z.B. itch.io-Embed, eigene Hosting-URL, oder ein anderes HTML-Spiel im Netz</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveGame(${isEdit?idx:'null'})">Speichern</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+  m._emoji=g.emoji; m._color=g.color; m._playFile=null;
+  // Pre-select correct tab
+  if(isEdit && g.playFile) switchSrcTab('file');
+  else if(isEdit && g.playUrl) switchSrcTab('url');
+  document.getElementById('g-name').focus();
+}
+function switchSrcTab(tab){
+  const filePanel=document.getElementById('src-panel-file');
+  const urlPanel=document.getElementById('src-panel-url');
+  const fileBtn=document.getElementById('src-tab-file');
+  const urlBtn=document.getElementById('src-tab-url');
+  if(!filePanel||!urlPanel) return;
+  if(tab==='file'){
+    filePanel.style.display='block'; urlPanel.style.display='none';
+    fileBtn.style.background='rgba(0,229,255,0.08)'; fileBtn.style.borderColor='var(--accent)'; fileBtn.style.color='var(--accent)';
+    urlBtn.style.background='transparent'; urlBtn.style.borderColor='var(--border2)'; urlBtn.style.color='var(--muted)';
+  } else {
+    filePanel.style.display='none'; urlPanel.style.display='block';
+    urlBtn.style.background='rgba(0,229,255,0.08)'; urlBtn.style.borderColor='var(--accent)'; urlBtn.style.color='var(--accent)';
+    fileBtn.style.background='transparent'; fileBtn.style.borderColor='var(--border2)'; fileBtn.style.color='var(--muted)';
+  }
+}
+function handleGameFileUpload(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  const label=document.getElementById('game-file-label');
+  label.style.borderColor='var(--accent)';
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    document.getElementById('active-modal')._playFile=ev.target.result; // full data-URL
+    document.getElementById('game-file-name').textContent='✅ '+file.name+' ('+Math.round(file.size/1024)+' KB)';
+  };
+  reader.readAsDataURL(file);
+}
+function setEmoji(e,btn){ document.getElementById('active-modal')._emoji=e; document.getElementById('emoji-picker').querySelectorAll('button').forEach(b=>b.style.borderColor='transparent'); btn.style.borderColor='var(--accent)'; }
+function setColor(c,btn){ document.getElementById('active-modal')._color=c; document.getElementById('color-picker').querySelectorAll('button').forEach(b=>b.style.borderColor='transparent'); btn.style.borderColor='white'; }
+function saveGame(idx){
+  const m=document.getElementById('active-modal');
+  const old=idx!==null&&idx!==undefined?data.games[idx]:{};
+  // Determine play source
+  const newFile=m._playFile||null;
+  const urlInput=document.getElementById('g-url');
+  const urlVal=urlInput?urlInput.value.trim():'';
+  const filePanelVisible=document.getElementById('src-panel-file')&&document.getElementById('src-panel-file').style.display!=='none';
+  let playFile=null, playUrl='';
+  if(filePanelVisible){
+    playFile=newFile||(old.playFile||null); // keep existing file if none newly selected
+    playUrl='';
+  } else {
+    playFile=null; // URL mode — drop stored file to save space
+    playUrl=urlVal||(old.playUrl||'');
+  }
+  const g={id:Date.now(),name:document.getElementById('g-name').value.trim(),genre:document.getElementById('g-genre').value.trim(),emoji:m._emoji||'🎮',color:m._color||'#00e5ff',description:'',bannerUrl:'',images:[],patches:[],roadmap:[],playFile,playUrl};
+  if(!g.name) return;
+  if(idx===null||idx===undefined){ data.games.push(g); }
+  else { g.description=old.description||''; g.bannerUrl=old.bannerUrl||''; g.images=old.images||[]; g.patches=old.patches||[]; g.roadmap=old.roadmap||[]; data.games[idx]=g; }
+  save(); renderGames(); closeModal();
+}
+function deleteGame(idx){ if(!confirm('Wirklich löschen?')) return; data.games.splice(idx,1); save(); renderGames(); }
+
+function openImpressumModal(){
+  const im=data.impressum; const m=document.createElement('div'); m.className='modal-overlay'; m.id='active-modal';
+  m.innerHTML=`<div class="modal-box">
+    <div class="modal-title">✏️ Impressum bearbeiten</div>
+    <input class="modal-input" id="im-name" placeholder="Name" value="${im.name}">
+    <input class="modal-input" id="im-street" placeholder="Straße + Nr." value="${im.street}">
+    <input class="modal-input" id="im-city" placeholder="PLZ Stadt" value="${im.city}">
+    <input class="modal-input" id="im-email" placeholder="E-Mail" value="${im.email}">
+    <input class="modal-input" id="im-phone" placeholder="Telefon" value="${im.phone}">
+    <textarea class="modal-textarea" id="im-note" placeholder="Hinweis...">${im.note}</textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveImpressum()">Speichern</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+}
+function saveImpressum(){
+  data.impressum={name:document.getElementById('im-name').value.trim(),street:document.getElementById('im-street').value.trim(),city:document.getElementById('im-city').value.trim(),email:document.getElementById('im-email').value.trim(),phone:document.getElementById('im-phone').value.trim(),note:document.getElementById('im-note').value.trim()};
+  save(); renderImpressumContent(); closeModal();
+}
+
+// ====== FORUMS ======
+function renderForums(){
+  const container = document.getElementById('forum-container');
+  const adminBar = document.getElementById('admin-forums-bar');
+  if(adminBar) adminBar.style.display = isAdmin ? 'block' : 'none';
+
+  if(activeCategoryIdx === null){
+    container.innerHTML = data.forums.categories.map((cat,i)=>`
+      <div class="forum-category" onclick="selectForumCategory(${i})">
+        <div class="forum-category-name">${cat.name}</div>
+        <div class="forum-category-desc">${cat.desc} · ${cat.posts.length} Posts</div>
+      </div>`).join('');
+  } else {
+    const cat = data.forums.categories[activeCategoryIdx];
+    const html = `<div onclick="selectForumCategory(null)" style="padding:10px 20px;background:var(--bg3);border-bottom:1px solid var(--border);cursor:pointer;color:var(--muted);font-size:12px;">◀ Zurück zu Kategorien</div>
+      <div style="padding:15px 20px;border-bottom:1px solid var(--border);">${isUser||isAdmin?`<button class="news-add-btn" onclick="openForumPostModal()" style="border-color:rgba(0,255,136,0.35);color:var(--success);">＋ Post erstellen</button>`:'<div style="font-size:12px;color:var(--muted);">📝 Anmelden um Posts zu erstellen</div>'}</div>
+      <div class="forum-posts">${cat.posts.length?cat.posts.map((p,i)=>`
+        <div class="forum-post">
+          <div class="forum-post-user">${p.user}</div>
+          <div class="forum-post-time">${p.date}</div>
+          <div class="forum-post-body">${p.body}</div>
+          ${isAdmin?`<div class="edit-actions" style="margin-top:8px;">
+            <button class="edit-btn del" onclick="deleteForumPost(${i})">🗑️ Löschen</button>
+          </div>`:''}
+        </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;font-style:italic;">Noch keine Posts in dieser Kategorie.</div>'}</div>`;
+    container.innerHTML = html;
+  }
+}
+function selectForumCategory(idx){
+  activeCategoryIdx = idx;
+  renderForums();
+}
+function openForumCategoryModal(){
+  const m = document.createElement('div');
+  m.className = 'modal-overlay'; m.id = 'active-modal';
+  m.innerHTML = `<div class="modal-box">
+    <div class="modal-title">⚙️ Forum-Kategorien</div>
+    <div style="padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:14px;">
+      ${data.forums.categories.map((cat,i)=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border2);">
+          <div>
+            <div style="font-size:13px;color:var(--text);font-weight:600;">${cat.name}</div>
+            <div style="font-size:11px;color:var(--muted);">${cat.desc}</div>
+          </div>
+          <button class="edit-btn del" onclick="deleteForumCategory(${i});closeModal();renderForums()">🗑️</button>
+        </div>
+      `).join('')}
+    </div>
+    <div style="padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Neue Kategorie</div>
+      <input class="modal-input" id="fc-name" placeholder="Kategorienname" />
+      <textarea class="modal-textarea" id="fc-desc" placeholder="Beschreibung..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Schließen</button>
+      <button class="btn-save" onclick="addForumCategory()">＋ Hinzufügen</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+}
+function addForumCategory(){
+  const name = document.getElementById('fc-name').value.trim();
+  const desc = document.getElementById('fc-desc').value.trim();
+  if(!name) return;
+  data.forums.categories.push({id:Date.now(),name,desc,posts:[]});
+  save(); closeModal(); renderForums();
+}
+function deleteForumCategory(idx){
+  if(!confirm('Kategorie löschen?')) return;
+  data.forums.categories.splice(idx,1);
+  save();
+}
+function openForumPostModal(){
+  const m = document.createElement('div');
+  m.className = 'modal-overlay'; m.id = 'active-modal';
+  m.innerHTML = `<div class="modal-box">
+    <div class="modal-title">＋ Neuer Forum Post</div>
+    <textarea class="modal-textarea" id="fp-body" placeholder="Dein Post..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveForumPost()">Posten</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+  document.getElementById('fp-body').focus();
+}
+function saveForumPost(){
+  const body = document.getElementById('fp-body').value.trim();
+  if(!body) return;
+  const cat = data.forums.categories[activeCategoryIdx];
+  cat.posts.push({user:currentUser||'Gast',body,date:new Date().toLocaleDateString('de-DE')});
+  save(); renderForums(); closeModal();
+}
+function deleteForumPost(idx){
+  if(!confirm('Post löschen?')) return;
+  const cat = data.forums.categories[activeCategoryIdx];
+  cat.posts.splice(idx,1);
+  save(); renderForums();
+}
+
+// ====== SUPPORT ======
+function renderSupportTickets(){
+  const btn = document.getElementById('support-create-btn');
+  if(isUser||isAdmin) btn.innerHTML = '<button class="news-add-btn" style="border-color:rgba(255,165,2,0.35);color:var(--warning);" onclick="openSupportModal()">＋ Ticket erstellen</button>';
+  else btn.innerHTML = '<div style="font-size:12px;color:var(--muted);">📧 Anmelden um Support zu kontaktieren</div>';
+
+  const list = document.getElementById('support-list');
+  if(!data.supportTickets.length){
+    list.innerHTML = '<div style="padding:28px;color:var(--muted);text-align:center;font-size:13px;font-style:italic;">Noch keine Support-Tickets vorhanden.</div>';
+    return;
+  }
+  list.innerHTML = data.supportTickets.map((t,i)=>`
+    <div class="support-ticket">
+      <div class="support-ticket-header">
+        <span class="support-ticket-status ${t.status}">${t.status==='open'?'Offen':'Geschlossen'}</span>
+        <span class="support-ticket-title">${t.title}</span>
+      </div>
+      <div class="support-ticket-user">Von: <strong>${t.user}</strong></div>
+      <div class="support-ticket-body">${t.body}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">Erstellt: ${t.date}</div>
+      ${isAdmin?`<div class="support-ticket-actions">
+        <button class="edit-btn" onclick="toggleTicketStatus(${i})" style="border-color:rgba(0,229,255,0.3);color:var(--accent);">✓ ${t.status==='open'?'Schließen':'Öffnen'}</button>
+        <button class="edit-btn del" onclick="deleteTicket(${i})">🗑️ Löschen</button>
+      </div>`:''}
+    </div>`).join('');
+}
+function openSupportModal(){
+  const m = document.createElement('div');
+  m.className = 'modal-overlay'; m.id = 'active-modal';
+  m.innerHTML = `<div class="modal-box">
+    <div class="modal-title">🎧 Support-Ticket erstellen</div>
+    <input class="modal-input" id="st-title" placeholder="Betreff" />
+    <textarea class="modal-textarea" id="st-body" placeholder="Beschreibung deines Problems..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveSupportTicket()">Einreichen</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+  document.getElementById('st-title').focus();
+}
+function saveSupportTicket(){
+  const title = document.getElementById('st-title').value.trim();
+  const body = document.getElementById('st-body').value.trim();
+  if(!title || !body) return;
+  data.supportTickets.push({id:Date.now(),user:currentUser||'Gast',title,body,status:'open',date:new Date().toLocaleDateString('de-DE')});
+  save(); renderSupportTickets(); closeModal();
+  const list = document.getElementById('support-list');
+  list.scrollTop = 0;
+}
+function toggleTicketStatus(idx){
+  data.supportTickets[idx].status = data.supportTickets[idx].status==='open'?'closed':'open';
+  save(); renderSupportTickets();
+}
+function deleteTicket(idx){
+  if(!confirm('Ticket löschen?')) return;
+  data.supportTickets.splice(idx,1);
+  save(); renderSupportTickets();
+}
+
+
+// ====== BOOTSCREEN ======
+(function(){
+  const logs = [
+    '> Initialisiere NEXUS OS v3.0...',
+    '> Lade Systemmodule...',
+    '> Verbinde mit Firebase...',
+    '> Synchronisiere Community-Daten...',
+    '> Überprüfe Benutzerdaten...',
+    '> Lade Community-Services...',
+    '> Starte Gaming-Plattform...',
+    '> Alle Systeme bereit.'
+  ];
+  const logEl = document.getElementById('boot-log');
+  const bar = document.getElementById('boot-bar');
+  const bootEl = document.getElementById('bootscreen');
+  let i = 0;
+  function step(){
+    if(i < logs.length){
+      const line = document.createElement('div');
+      line.className = 'boot-log-line';
+      line.style.color = i === logs.length-1 ? 'var(--success)' : 'var(--accent4)';
+      line.textContent = logs[i];
+      logEl.appendChild(line);
+      if(logEl.children.length > 5) logEl.children[0].remove();
+      bar.style.width = ((i+1)/logs.length*100)+'%';
+      i++;
+      setTimeout(step, 220 + Math.random()*180);
+    } else {
+      setTimeout(()=>{
+        bootEl.classList.add('fade-out');
+        setTimeout(()=>{ bootEl.style.display='none'; startPostBoot(); }, 820);
+      }, 400);
+    }
+  }
+  setTimeout(step, 300);
+})();
+
+function startPostBoot(){
+  // Show welcome notification after a short delay
+  setTimeout(()=>{
+    showNotif('🚀','NEXUS OS gestartet','Willkommen! Bitte melde dich an oder gehe als Gast.','info');
+  }, 800);
+  // Show a fake system notification after 3 seconds
+  setTimeout(()=>{
+    showNotif('🔔','3 neue Forum-Posts','Es gibt neue Aktivität in deiner Community.','info');
+  }, 4000);
+}
+
+// ====== NOTIFICATIONS ======
+let notifQueue = [];
+function showNotif(icon, title, msg, type='info', duration=4200){
+  const container = document.getElementById('notif-container');
+  const el = document.createElement('div');
+  el.className = `notif type-${type}`;
+  const now = new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  el.innerHTML = `<div class="notif-icon">${icon}</div><div class="notif-body"><div class="notif-title">${title}</div><div class="notif-msg">${msg}</div><div class="notif-time">${now}</div></div>`;
+  el.addEventListener('click', ()=>dismissNotif(el));
+  container.appendChild(el);
+  // Pulse the taskbar clock briefly
+  const clk = document.getElementById('taskbar-clock');
+  if(clk){ clk.style.borderColor='rgba(0,229,255,0.5)'; setTimeout(()=>clk.style.borderColor='',700); }
+  setTimeout(()=>dismissNotif(el), duration);
+}
+function dismissNotif(el){
+  if(!el.parentNode) return;
+  el.classList.add('fade-out');
+  setTimeout(()=>el.remove(), 280);
+}
+
+// ====== ONLINE USERS BAR ======
+let onlineBarOpen = false;
+const ONLINE_NAMES = ['CoolGamer92','ProPlayer','EventMaster','HelpWanted','NexusUser'];
+function toggleOnlineBar(){
+  onlineBarOpen = !onlineBarOpen;
+  document.getElementById('online-bar').classList.toggle('show', onlineBarOpen);
+  if(onlineBarOpen) renderOnlineBar();
+}
+function updateOnlineStatus(selfJoined){
+  // Add current user to fake online list
+  renderOnlineBar();
+  const count = getOnlineCount();
+  document.getElementById('online-count-label').textContent = count+' Online';
+}
+function getOnlineCount(){
+  let base = 2 + Math.floor(Math.random()*3);
+  if(isUser||isAdmin) base++;
+  return base;
+}
+function renderOnlineBar(){
+  const list = document.getElementById('online-users-list');
+  let users = [];
+  if(isUser && currentUser) users.push({name:currentUser, avatar:getUserAvatar(currentUser), self:true});
+  if(isAdmin) users.push({name:data.adminUser||'admin', avatar:null, self:true});
+  // Add some fake online users
+  const extras = ONLINE_NAMES.filter(n=>n!==currentUser).slice(0,3);
+  extras.forEach(n=>users.push({name:n,avatar:null}));
+  list.innerHTML = users.map(u=>`
+    <div class="online-user-row">
+      <div class="online-dot"></div>
+      <div class="online-avatar">${u.avatar?`<img src="${u.avatar}">`:'👤'}</div>
+      <div class="online-uname">${u.name}${u.self?' <span style="font-size:9px;color:var(--accent);opacity:0.7;">(Du)</span>':''}</div>
+    </div>`).join('');
+  document.getElementById('online-count-label').textContent = users.length+' Online';
+}
+
+// ====== AVATAR ======
+function getUserAvatar(username){
+  const u = data.users.find(u=>u.name===username);
+  return u ? u.avatar : null;
+}
+function updateTaskbarAvatar(avatarUrl){
+  const el = document.getElementById('taskbar-avatar');
+  if(!el) return;
+  if(avatarUrl){
+    el.innerHTML = `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  } else {
+    el.textContent = '👤';
+  }
+}
+function openProfileModal(){
+  if(!isUser && !isAdmin) return;
+  const user = data.users.find(u=>u.name===currentUser);
+  const currentAvatar = user ? user.avatar : null;
+  const m = document.createElement('div');
+  m.className='modal-overlay'; m.id='active-modal';
+  m.innerHTML=`<div class="modal-box" style="max-width:380px;">
+    <div class="modal-title">👤 Profil — ${currentUser}</div>
+    <div style="text-align:center;margin-bottom:18px;">
+      <div class="avatar-upload-area" onclick="triggerAvatarUpload()" id="profile-avatar-preview">
+        ${currentAvatar?`<img src="${currentAvatar}"><div class="avatar-upload-overlay">✏️ Ändern</div>`:'<span style="font-size:36px;">👤</span><div style="font-size:10px;color:var(--muted);margin-top:4px;">Foto hochladen</div>'}
+      </div>
+      <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
+      <div style="font-size:12px;color:var(--muted);">Oder Bild-URL:</div>
+      <input class="modal-input" id="avatar-url-input" placeholder="https://... (Profilbild-URL)" value="${currentAvatar||''}" style="margin-top:8px;">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveUserAvatar()">💾 Speichern</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+}
+function triggerAvatarUpload(){
+  document.getElementById('avatar-file-input').click();
+}
+function handleAvatarUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const dataUrl = ev.target.result;
+    document.getElementById('avatar-url-input').value = dataUrl;
+    const preview = document.getElementById('profile-avatar-preview');
+    preview.innerHTML = `<img src="${dataUrl}"><div class="avatar-upload-overlay">✏️ Ändern</div>`;
+    preview.onclick = triggerAvatarUpload;
+  };
+  reader.readAsDataURL(file);
+}
+function saveUserAvatar(){
+  const url = document.getElementById('avatar-url-input').value.trim();
+  const user = data.users.find(u=>u.name===currentUser);
+  if(user){ user.avatar = url||null; save(); }
+  updateTaskbarAvatar(url||null);
+  // Update forum posts avatar display
+  closeModal();
+  showNotif('🖼️','Profilbild gespeichert','Dein Profilbild wurde aktualisiert.','success');
+}
+
+// ====== LOGOUT fix ======
+
+
+// ====== GAME LAUNCH PLATFORM ======
+function launchGame(idx){
+  const g = data.games[idx];
+  if(!g) return;
+  document.getElementById('launch-game-emoji').textContent = g.emoji || '🎮';
+  document.getElementById('launch-game-title').textContent = (g.name||'Spiel').toUpperCase();
+  const frame = document.getElementById('game-launch-frame');
+  // playFile (base64 data-URL) takes priority over playUrl
+  const src = g.playFile || g.playUrl || '';
+  if(src){
+    frame.style.display='block';
+    frame.src = src;
+    document.getElementById('game-launch-overlay').classList.add('show');
+    showNotif('🎮','Spiel gestartet','<strong>'+g.name+'</strong> wird geladen…','success');
+  } else {
+    frame.style.display='none';
+    const overlay = document.getElementById('game-launch-overlay');
+    overlay.classList.add('show');
+    const placeholder = document.createElement('div');
+    placeholder.className='launch-no-url';
+    placeholder.innerHTML='<div class="no-url-icon">🔗</div><p>Noch keine Spieldatei hinterlegt.<br>Admin kann im Spiel-Editor eine <strong>HTML-Datei hochladen</strong> oder eine <strong>externe URL</strong> eintragen.</p><button class="guest-btn" style="width:auto;padding:9px 22px;" onclick="closeLaunchOverlay()">Zurück</button>';
+    overlay.appendChild(placeholder);
+  }
+}
+function closeLaunchOverlay(){
+  const overlay = document.getElementById('game-launch-overlay');
+  overlay.classList.remove('show');
+  const frame = document.getElementById('game-launch-frame');
+  frame.src='';
+  // Remove any placeholder divs
+  overlay.querySelectorAll('.launch-no-url').forEach(e=>e.remove());
+}
+
+// ====== INIT ======
+applyBranding(); renderImpressumContent(); renderForums(); renderSupportTickets();
+
+// Desktop icon single-click handler
+document.querySelectorAll('.d-icon').forEach(icon=>{
+  let clickTimeout;
+  icon.addEventListener('click',function(){
+    clearTimeout(clickTimeout);
+    this.classList.add('double-click');
+    clickTimeout=setTimeout(()=>this.classList.remove('double-click'),150);
+  });
+});
+</script>
+</body>
+</html>
