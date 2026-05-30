@@ -125,6 +125,13 @@
   }
 
   /* ======== DESKTOP ======== */
+  /* Custom wallpapers */
+  #desktop.wp-1{background:radial-gradient(ellipse at 10% 90%, rgba(124,58,237,0.25) 0%, transparent 50%),radial-gradient(ellipse at 90% 10%, rgba(0,229,255,0.15) 0%, transparent 50%),var(--bg);}
+  #desktop.wp-2{background:radial-gradient(ellipse at 50% 0%, rgba(255,71,87,0.2) 0%, transparent 60%),radial-gradient(ellipse at 50% 100%, rgba(255,165,2,0.15) 0%, transparent 60%),var(--bg);}
+  #desktop.wp-3{background:radial-gradient(ellipse at 0% 50%, rgba(0,255,136,0.18) 0%, transparent 55%),radial-gradient(ellipse at 100% 50%, rgba(0,100,255,0.15) 0%, transparent 55%),var(--bg);}
+  #desktop.wp-4{background:radial-gradient(circle at 50% 50%, rgba(124,58,237,0.22) 0%, rgba(0,229,255,0.08) 40%, transparent 70%),var(--bg);}
+  #desktop.wp-5{background:linear-gradient(135deg,rgba(0,10,30,1) 0%,rgba(5,0,20,1) 50%,rgba(0,10,30,1) 100%),radial-gradient(ellipse at 30% 70%, rgba(255,71,87,0.12) 0%, transparent 50%);}
+  #desktop.wp-6{background:radial-gradient(ellipse at 20% 20%, rgba(200,168,75,0.12) 0%, transparent 50%),radial-gradient(ellipse at 80% 80%, rgba(200,168,75,0.08) 0%, transparent 50%),var(--bg);}
   #desktop{
     width:100vw; height:100vh;
     position:relative; overflow:hidden;
@@ -252,9 +259,10 @@
     font-family:'Share Tech Mono',monospace;
     font-size:12px; color:var(--text2);
     letter-spacing:2px;
-    padding:5px 11px;
+    padding:4px 11px;
     border:1px solid var(--border2); border-radius:6px;
     background:rgba(0,0,0,0.4);
+    line-height:1.2; text-align:center;
   }
   #admin-indicator{
     display:none; align-items:center; gap:6px;
@@ -390,6 +398,22 @@
     letter-spacing:3px;
   }
   .site-header-preview .tagline{font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:0.3px;}
+  /* Rang-Badges */
+  .rank-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-left:5px;}
+  .rank-neuling{background:rgba(74,74,106,0.2);color:var(--muted);border:1px solid var(--border2);}
+  .rank-mitglied{background:rgba(0,229,255,0.08);color:var(--accent);border:1px solid rgba(0,229,255,0.2);}
+  .rank-veteran{background:rgba(124,58,237,0.1);color:#b09eff;border:1px solid rgba(124,58,237,0.25);}
+  .rank-legend{background:rgba(200,168,75,0.12);color:var(--gold, #c8a84b);border:1px solid rgba(200,168,75,0.3);}
+  /* Emoji Reaktionen */
+  .reactions{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
+  .reaction-btn{padding:2px 8px;background:rgba(0,0,0,0.2);border:1px solid var(--border2);border-radius:12px;font-size:11px;cursor:pointer;transition:all 0.15s;color:var(--text2);}
+  .reaction-btn:hover{border-color:var(--accent);background:rgba(0,229,255,0.05);}
+  .reaction-btn.reacted{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,0.08);}
+  /* Copy button */
+  .copy-btn{padding:3px 8px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;transition:all 0.15s;margin-left:6px;}
+  .copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+  /* Keyboard shortcut hint */
+  .kbd{display:inline-block;padding:1px 5px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;font-size:10px;color:var(--text2);font-family:'Share Tech Mono',monospace;}
   .badge{
     display:inline-block; padding:3px 9px;
     border-radius:5px; font-size:10px;
@@ -1271,6 +1295,10 @@
       <div class="d-icon-img" style="background:rgba(124,58,237,0.1);color:#b09eff;">🎮</div>
       <span>Games</span>
     </div>
+    <div class="d-icon" onclick="openWindow('win-apps')">
+      <div class="d-icon-img" style="background:rgba(0,255,136,0.1);color:var(--success);">📱</div>
+      <span>Apps</span>
+    </div>
     <div class="d-icon" onclick="openWindow('win-forums')">
       <div class="d-icon-img" style="background:rgba(0,255,136,0.1);color:var(--success);">💬</div>
       <span>Forums</span>
@@ -1339,6 +1367,33 @@
       <div class="games-grid" id="games-grid"></div>
     </div>
     <div class="resize-handle" onmousedown="startResize(event,'win-games')"></div>
+  </div>
+
+
+  <!-- WINDOW: APPS -->
+  <div class="window" id="win-apps" style="width:510px;height:490px;top:90px;left:215px;">
+    <div class="win-header" onmousedown="startDrag(event,'win-apps')">
+      <div class="win-controls">
+        <button class="win-ctrl close" onclick="closeWindow('win-apps')"></button>
+        <button class="win-ctrl min" onclick="minWindow('win-apps')"></button>
+        <button class="win-ctrl max" onclick="maxWindow('win-apps')"></button>
+      </div>
+      <div class="win-title">📱 Apps</div>
+    </div>
+    <div class="win-body">
+      <div class="site-header-preview">
+        <div>
+          <div class="logo-text" id="preview-name-apps">NEXUS</div>
+          <div class="tagline" id="preview-tag-apps">Deine Apps</div>
+        </div>
+        <div style="margin-left:auto"><span class="badge badge-blue">Apps</span></div>
+      </div>
+      <div class="admin-bar" id="admin-apps-bar">
+        <button class="game-add-btn" style="border-color:rgba(0,255,136,0.4);color:var(--success);" onclick="openAppModal()">＋ App hinzufügen</button>
+      </div>
+      <div class="games-grid" id="apps-grid"></div>
+    </div>
+    <div class="resize-handle" onmousedown="startResize(event,'win-apps')"></div>
   </div>
 
   <!-- WINDOW: FORUMS -->
@@ -1437,20 +1492,18 @@
 </div>
 
 <!-- ======== ONLINE USERS BAR ======== -->
-<div id="online-bar">
-  <div class="online-bar-title">🟢 Online Jetzt</div>
-  <div id="online-users-list"></div>
-</div>
+
 <!-- ======== TASKBAR ======== -->
 <div id="taskbar">
   <button class="tb-btn" onclick="openWindow('win-news');focusWindow('win-news');" id="tb-news">📰 News</button>
   <button class="tb-btn" onclick="openWindow('win-games');focusWindow('win-games');" id="tb-games">🎮 Games</button>
+  <button class="tb-btn" onclick="openWindow('win-apps');focusWindow('win-apps');" id="tb-apps">📱 Apps</button>
   <button class="tb-btn" onclick="openWindow('win-forums');focusWindow('win-forums');" id="tb-forums">💬 Forums</button>
   <button class="tb-btn" onclick="openWindow('win-support');focusWindow('win-support');" id="tb-support">🎧 Support</button>
   <button class="tb-btn" onclick="openWindow('win-impressum');focusWindow('win-impressum');" id="tb-impressum">📋 Impressum</button>
   <button class="tb-btn" onclick="openWindow('win-settings');focusWindow('win-settings');" id="tb-settings">⚙️ Settings</button>
   <div class="taskbar-right">
-    <button id="online-toggle" onclick="toggleOnlineBar()"><div class="online-pulse"></div><span id="online-count-label">0 Online</span></button>
+
     <div id="guest-badge">👁 Gast</div>
     <div id="user-badge" style="display:none;align-items:center;gap:6px;padding:4px 10px;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.25);border-radius:6px;font-size:11px;color:var(--accent);font-weight:600;letter-spacing:0.3px;cursor:pointer;" onclick="openProfileModal()"><div class="user-avatar" id="taskbar-avatar">👤</div><span id="user-badge-name">User</span></div>
     <div id="admin-indicator">🔑 Admin</div>
@@ -1498,15 +1551,19 @@
 // Default-Daten (Fallback wenn Firebase + localStorage leer)
 const DEFAULT_DATA = {
   siteName: 'NEXUS',
+  wallpaper: 'default',
   tagline: 'Deine Gaming-Community',
   adminUser: 'admin',
   adminPass: 'admin123',
+  admins: [],
+  bannedUsers: [],
   users: [],
   news: [
     { id:1, date:'28.05.2025', title:'Willkommen auf unserer Seite!', body:'Schau dich um und entdecke alle Features. Mehr News folgen bald.' },
     { id:2, date:'15.05.2025', title:'Server-Update v2.1', body:'Neues Update mit verbesserter Performance und Bugfixes.' }
   ],
   games: [],
+  apps: [],
   forums: {
     categories: [
       { id:1, name:'Allgemein', desc:'Alles rund um Gaming', posts:[
@@ -1561,7 +1618,7 @@ window.addEventListener('nexus-firebase-ready', function(e){
   window._nexusReady = true;
   // UI neu rendern mit aktuellen Daten
   renderNews(); renderGames(); renderForums(); renderSupportTickets();
-  applyBranding(); renderImpressumContent();
+  applyBranding(); applyWallpaper(); renderImpressumContent();
 });
 
 // ====== FIREBASE + LOCALSTORAGE SYNC ======
@@ -1589,6 +1646,19 @@ window.nexusOnRemoteUpdate = function(remote){
 
 // ====== GAME DATA HELPERS ======
 function getGame(idx){ return data.games[idx]; }
+
+// ====== RANGSYSTEM ======
+function getUserRank(username){
+  const user = data.users.find(u=>u.name===username);
+  if(!user) return {label:'Neuling',cls:'rank-neuling',icon:'🔰'};
+  const posts = data.forums.categories.reduce((s,c)=>s+c.posts.filter(p=>p.user===username).length,0);
+  const tickets = (data.supportTickets||[]).filter(t=>t.user===username).length;
+  const score = posts*3 + tickets;
+  if(score>=50) return {label:'Legend',cls:'rank-legend',icon:'👑'};
+  if(score>=20) return {label:'Veteran',cls:'rank-veteran',icon:'⭐'};
+  if(score>=5)  return {label:'Mitglied',cls:'rank-mitglied',icon:'✅'};
+  return {label:'Neuling',cls:'rank-neuling',icon:'🔰'};
+}
 function ensureGameExtra(idx){
   const g = data.games[idx];
   if(!g.description) g.description = '';
@@ -1618,6 +1688,13 @@ function tryUserLogin(){
   const p = document.getElementById('user-login-pass').value;
   if(!u || !p){ showNotif('⚠️','Fehlende Eingabe','Bitte Benutzername und Passwort eingeben.','warn'); return; }
   const user = data.users.find(u2=>u2.name===u && u2.pass===p);
+  if(user && (data.bannedUsers||[]).includes(user.name)){
+    const err=document.getElementById('user-login-err');
+    err.textContent='🚫 Dein Konto wurde gesperrt.'; err.style.display='block';
+    setTimeout(()=>err.style.display='none',3000);
+    showNotif('🚫','Gesperrt','Dein Konto wurde von einem Admin gesperrt.','error');
+    return;
+  }
   if(user){
     isUser=true; isAdmin=false; isGuest=false; currentUser=user.name; hideLoginOverlay();
     const badge = document.getElementById('user-badge');
@@ -1630,8 +1707,7 @@ function tryUserLogin(){
     document.getElementById('login-btn').style.display='none';
     const adminForumsBar = document.getElementById('admin-forums-bar');
     if(adminForumsBar) adminForumsBar.style.display='none';
-    renderNews(); renderGames(); renderSettings(); renderForums(); renderSupportTickets();
-    updateOnlineStatus(true);
+    renderNews(); renderGames(); renderApps(); renderSettings(); renderForums(); renderSupportTickets();
     showNotif('👤','Willkommen zurück!','Du bist jetzt als <strong>'+currentUser+'</strong> angemeldet.','success');
   } else {
     const err = document.getElementById('user-login-err');
@@ -1693,7 +1769,8 @@ function registerNewUser(){
 function tryAdminLogin(){
   const u = document.getElementById('admin-login-user').value.trim();
   const p = document.getElementById('admin-login-pass').value;
-  if(u === data.adminUser && p === data.adminPass){
+  const extraAdmin = (data.admins||[]).find(a=>a.name===u&&a.pass===p);
+  if((u === data.adminUser && p === data.adminPass) || extraAdmin){
     isAdmin=true; isUser=false; isGuest=false; currentUser=data.adminUser; hideLoginOverlay();
     document.getElementById('admin-indicator').classList.add('show');
     document.getElementById('guest-badge').classList.remove('show');
@@ -1702,11 +1779,11 @@ function tryAdminLogin(){
     document.getElementById('login-btn').style.display='none';
     document.getElementById('admin-news-bar').classList.add('show');
     document.getElementById('admin-games-bar').classList.add('show');
+    const adminAppsBar=document.getElementById('admin-apps-bar'); if(adminAppsBar) adminAppsBar.classList.add('show');
     document.getElementById('admin-impressum-bar').classList.add('show');
     const adminForumsBar = document.getElementById('admin-forums-bar');
     if(adminForumsBar) adminForumsBar.style.display='block';
-    renderNews(); renderGames(); renderSettings(); renderForums(); renderSupportTickets();
-    updateOnlineStatus(true);
+    renderNews(); renderGames(); renderApps(); renderSettings(); renderForums(); renderSupportTickets();
     showNotif('🔑','Admin-Modus aktiv','Du bist als Administrator angemeldet.','warn');
   } else {
     const err = document.getElementById('admin-login-err');
@@ -1728,7 +1805,7 @@ function enterAsGuest(){
   document.getElementById('login-btn').style.display='flex';
   const adminForumsBar = document.getElementById('admin-forums-bar');
   if(adminForumsBar) adminForumsBar.style.display='none';
-  renderNews(); renderGames(); renderSettings(); renderForums(); renderSupportTickets();
+  renderNews(); renderGames(); renderApps(); renderSettings(); renderForums(); renderSupportTickets();
   setTimeout(()=>openWindow('win-news'),100);
   setTimeout(()=>showNotif('👁','Gast-Modus','Du bist als Gast angemeldet. Registriere dich für mehr Features!','info'), 600);
 }
@@ -1747,7 +1824,7 @@ function logout(){
   document.getElementById('admin-impressum-bar').classList.remove('show');
   const adminForumsBar = document.getElementById('admin-forums-bar');
   if(adminForumsBar) adminForumsBar.style.display='none';
-  showLoginOverlay(); renderSettings(); renderForums(); renderSupportTickets();
+  showLoginOverlay(); renderSettings(); renderForums(); renderSupportTickets(); applyWallpaper();
   setTimeout(()=>showNotif('👋','Abgemeldet', wasAdmin ? 'Admin-Sitzung beendet.' : 'Du wurdest als <strong>'+(wasUser||'User')+'</strong> abgemeldet.','info'), 300);
 }
 function showLoginOverlay(){
@@ -1789,7 +1866,7 @@ function focusWindow(id){
   updateTaskbar(id,true);
 }
 function updateTaskbar(id,active){
-  const map={'win-news':'tb-news','win-games':'tb-games','win-forums':'tb-forums','win-support':'tb-support','win-impressum':'tb-impressum','win-settings':'tb-settings'};
+  const map={'win-news':'tb-news','win-games':'tb-games','win-apps':'tb-apps','win-forums':'tb-forums','win-support':'tb-support','win-impressum':'tb-impressum','win-settings':'tb-settings'};
   if(map[id]){
     if(active) document.getElementById(map[id]).classList.add('active');
     else document.getElementById(map[id]).classList.remove('active');
@@ -1822,14 +1899,40 @@ document.addEventListener('mouseup',()=>{ dragState=null; resizeState=null; });
 
 // ====== CLOCK ======
 function updateClock(){
-  document.getElementById('taskbar-clock').textContent =
-    new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  const now = new Date();
+  const time = now.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  const date = now.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+  document.getElementById('taskbar-clock').innerHTML = `<span style="font-size:12px;">${time}</span><span style="font-size:9px;color:var(--muted);display:block;text-align:center;letter-spacing:1px;">${date}</span>`;
 }
 setInterval(updateClock,1000); updateClock();
 
 // ====== BRANDING ======
+function setWallpaper(id){
+  if(isUser && currentUser){
+    // User: save wallpaper per-user locally
+    const user = data.users.find(u=>u.name===currentUser);
+    if(user) user.wallpaper=id;
+    save();
+  } else if(isAdmin){
+    // Admin: save as global default
+    data.wallpaper=id;
+    save();
+  }
+  applyWallpaper(); renderSettings();
+}
+function applyWallpaper(){
+  const desktop=document.getElementById('desktop');
+  desktop.className=desktop.className.replace(/\bwp-\d+\b/g,'').trim();
+  // Per-user wallpaper takes priority over global
+  let wp = data.wallpaper||'default';
+  if(isUser && currentUser){
+    const user = data.users.find(u=>u.name===currentUser);
+    if(user&&user.wallpaper) wp=user.wallpaper;
+  }
+  if(wp&&wp!=='default') desktop.classList.add(wp);
+}
 function applyBranding(){
-  ['news','games'].forEach(k=>{
+  ['news','games','apps'].forEach(k=>{
     const n=document.getElementById('preview-name-'+k);
     const t=document.getElementById('preview-tag-'+k);
     if(n) n.textContent=data.siteName;
@@ -1886,6 +1989,91 @@ function renderGames(){
       </div>
     </div>`).join('');
 }
+
+// ====== RENDER APPS ======
+function renderApps(){
+  const el=document.getElementById('apps-grid');
+  if(!el) return;
+  if(!data.apps||!data.apps.length){
+    el.innerHTML=`<div class="games-empty-state">
+      <div class="games-empty-icon">📱</div>
+      <div class="games-empty-title">Keine Apps vorhanden</div>
+      <div class="games-empty-sub">${isAdmin?'Klicke auf "+ App hinzufügen" um die erste App zu erstellen.':'Noch keine Apps verfügbar.'}</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML=data.apps.map((a,i)=>`
+    <div class="game-card" onclick="launchApp(${i})">
+      <div class="game-thumb" style="background:${a.color}18;">
+        <span style="position:relative;z-index:1;">${a.emoji}</span>
+      </div>
+      <div class="game-info">
+        <div class="game-name">${a.name}</div>
+        <div class="game-genre">${a.category}</div>
+        ${isAdmin?`<div class="game-admin-actions" onclick="event.stopPropagation()">
+          <button class="edit-btn" onclick="openAppModal(${i})">✏️</button>
+          <button class="edit-btn del" onclick="deleteApp(${i})">🗑️</button>
+        </div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function launchApp(idx){
+  const a=data.apps[idx];
+  if(!a) return;
+  if(a.url){
+    window.open(a.url,'_blank');
+  } else {
+    showNotif('🔗','Keine URL','Diese App hat noch keine URL.','warn');
+  }
+}
+
+function openAppModal(idx){
+  const isEdit=idx!==undefined;
+  const a=isEdit?data.apps[idx]:{name:'',category:'',emoji:'📱',color:'#00ff88',url:''};
+  const m=document.createElement('div'); m.className='modal-overlay'; m.id='active-modal';
+  m.innerHTML=`<div class="modal-box">
+    <div class="modal-title">${isEdit?'✏️ App bearbeiten':'➕ App hinzufügen'}</div>
+    <input class="modal-input" id="a-name" placeholder="App-Name" value="${a.name}">
+    <input class="modal-input" id="a-cat" placeholder="Kategorie (z.B. Tool, Social, Utility)" value="${a.category}">
+    <input class="modal-input" id="a-url" placeholder="URL (https://...)" value="${a.url||''}">
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Emoji</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${['📱','🛠️','📊','🎵','📷','🗺️','💬','📧','🔐','🌐','📰','🎨'].map(e=>`<button onclick="setAppEmoji('${e}',this)" style="width:36px;height:36px;background:var(--bg3);border:2px solid ${e===a.emoji?'var(--accent)':'transparent'};border-radius:8px;font-size:19px;cursor:pointer;">${e}</button>`).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Farbe</div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px;">
+        ${['#00ff88','#00e5ff','#7c3aed','#ff4757','#ffa502','#2ed573','#1e90ff','#ff6b81'].map(c=>`<button onclick="setAppColor('${c}',this)" style="width:26px;height:26px;background:${c};border:3px solid ${c===a.color?'white':'transparent'};border-radius:50%;cursor:pointer;"></button>`).join('')}
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveApp(${isEdit?idx:'null'})">Speichern</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{if(e.target===m)closeModal();});
+  m._emoji=a.emoji; m._color=a.color;
+  document.getElementById('a-name').focus();
+}
+
+function setAppEmoji(e,btn){document.getElementById('active-modal')._emoji=e;document.querySelectorAll('#active-modal button[style*="border-radius:8px"]').forEach(b=>b.style.borderColor='transparent');btn.style.borderColor='var(--accent)';}
+function setAppColor(c,btn){document.getElementById('active-modal')._color=c;document.querySelectorAll('#active-modal button[style*="border-radius:50%"]').forEach(b=>b.style.borderColor='transparent');btn.style.borderColor='white';}
+
+function saveApp(idx){
+  const m=document.getElementById('active-modal');
+  const a={id:Date.now(),name:document.getElementById('a-name').value.trim(),category:document.getElementById('a-cat').value.trim(),emoji:m._emoji||'📱',color:m._color||'#00ff88',url:document.getElementById('a-url').value.trim()};
+  if(!a.name) return;
+  if(!data.apps) data.apps=[];
+  if(idx===null||idx===undefined) data.apps.push(a);
+  else data.apps[idx]=a;
+  save(); renderApps(); closeModal();
+}
+
+function deleteApp(idx){if(!confirm('App löschen?'))return;data.apps.splice(idx,1);save();renderApps();}
 
 // ====== GAME DETAIL ======
 let currentGdTab = 0;
@@ -2167,14 +2355,33 @@ function renderImpressumContent(){
 function renderSettings(){
   const body=document.getElementById('settings-body');
   if(isUser){
+    const wp = [{id:'default',label:'Standard',colors:['#7c3aed','#00e5ff']},{id:'wp-1',label:'Lila/Cyan',colors:['#7c3aed','#00e5ff']},{id:'wp-2',label:'Rot/Gold',colors:['#ff4757','#ffa502']},{id:'wp-3',label:'Grün/Blau',colors:['#00ff88','#0064ff']},{id:'wp-4',label:'Cosmic',colors:['#7c3aed','#00e5ff']},{id:'wp-5',label:'Deep Space',colors:['#ff4757','#0a0a1e']},{id:'wp-6',label:'Gold',colors:['#c8a84b','#8B6914']}];
+    const userObj = data.users.find(u=>u.name===currentUser)||{};
+    const curWp = userObj.wallpaper||data.wallpaper||'default';
     body.innerHTML=`
       <div class="settings-section">
         <div class="settings-label">👤 Benutzerprofil</div>
-        <div style="padding:16px 0;">
+        <div style="padding:12px 0;">
           <div class="settings-row"><label>Benutzername</label><span style="font-size:14px;color:var(--accent);">${currentUser}</span></div>
-          <div class="settings-row"><label>Beigetreten</label><span style="font-size:12px;color:var(--muted);">Aktiver Benutzer</span></div>
+          ${(()=>{const u=data.users.find(x=>x.name===currentUser);const rank=getUserRank(currentUser);return `<div class="settings-row"><label>Rang</label><span class="rank-badge ${rank.cls}">${rank.icon} ${rank.label}</span></div><div class="settings-row"><label>Beigetreten</label><span style="font-size:12px;color:var(--muted);">${u&&u.joinDate?u.joinDate:'Unbekannt'}</span></div>`;})()}
         </div>
-        <button class="settings-save" style="background:var(--accent3);" onclick="deleteUserAccount()">🗑️ Konto löschen</button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">🖼️ Hintergrundbild</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+          ${wp.map(w=>`<button onclick="setWallpaper('${w.id}')" style="padding:6px 10px;background:linear-gradient(135deg,${w.colors[0]}33,${w.colors[1]}22);border:1px solid ${curWp===w.id?w.colors[0]:'var(--border2)'};border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:11px;cursor:pointer;transition:all 0.2s;">${w.label}</button>`).join('')}
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">🔑 Passwort ändern</div>
+        <input class="settings-input" type="password" id="pw-old" placeholder="Aktuelles Passwort" style="width:100%;margin-bottom:6px;">
+        <input class="settings-input" type="password" id="pw-new" placeholder="Neues Passwort" style="width:100%;margin-bottom:6px;">
+        <input class="settings-input" type="password" id="pw-new2" placeholder="Neues Passwort bestätigen" style="width:100%;margin-bottom:8px;">
+        <button class="settings-save" onclick="changeUserPassword()">🔑 PASSWORT ÄNDERN</button>
+      </div>
+      <div class="settings-section">
+        <button class="settings-save" style="margin:0 0 8px 0;background:transparent;border:1px solid var(--border2);color:var(--text2);" onclick="showShortcutHints()">⌨️ Tastenkürzel anzeigen</button>
+        <button class="settings-save" style="background:var(--accent3);margin:0;" onclick="deleteUserAccount()">🗑️ Konto löschen</button>
       </div>`;
     return;
   }
@@ -2187,6 +2394,20 @@ function renderSettings(){
   }
   body.innerHTML=`
     <div class="settings-section">
+      <div class="settings-label">🖼️ Hintergrundbild</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+        ${[
+          {id:'default',label:'Standard',colors:['#7c3aed','#00e5ff']},
+          {id:'wp-1',label:'Lila/Cyan',colors:['#7c3aed','#00e5ff']},
+          {id:'wp-2',label:'Rot/Gold',colors:['#ff4757','#ffa502']},
+          {id:'wp-3',label:'Grün/Blau',colors:['#00ff88','#0064ff']},
+          {id:'wp-4',label:'Cosmic',colors:['#7c3aed','#00e5ff']},
+          {id:'wp-5',label:'Deep Space',colors:['#ff4757','#0a0a1e']},
+          {id:'wp-6',label:'Gold',colors:['#c8a84b','#8B6914']},
+        ].map(w=>`<button onclick="setWallpaper('${w.id}')" style="padding:6px 10px;background:linear-gradient(135deg,${w.colors[0]}33,${w.colors[1]}22);border:1px solid ${(data.wallpaper||'default')===w.id?w.colors[0]:'var(--border2)'};border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:11px;cursor:pointer;transition:all 0.2s;">${w.label}</button>`).join('')}
+      </div>
+    </div>
+    <div class="settings-section">
       <div class="settings-label">Website-Branding</div>
       <div class="settings-row"><label>Site-Name</label><input class="settings-input" id="set-name" value="${data.siteName}"></div>
       <div class="settings-row"><label>Tagline</label><input class="settings-input" id="set-tag" value="${data.tagline}"></div>
@@ -2196,13 +2417,78 @@ function renderSettings(){
       <div class="settings-row"><label>Benutzername</label><input class="settings-input" id="set-user" value="${data.adminUser}"></div>
       <div class="settings-row"><label>Neues Passwort</label><input class="settings-input" type="password" id="set-pass" placeholder="Leer = unverändert"></div>
     </div>
+    <div class="settings-section">
+      <div class="settings-label">👥 Admin-Konten</div>
+      <div id="admin-accounts-list" style="margin-bottom:10px;">
+        ${(data.admins||[]).map((a,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border2);font-size:12px;">
+          <span style="color:var(--accent);">🔑 ${a.name}</span>
+          <button class="edit-btn del" onclick="deleteAdminAccount(${i});renderSettings();">🗑️</button>
+        </div>`).join('')}
+        ${!(data.admins&&data.admins.length)?'<div style="font-size:11px;color:var(--muted);font-style:italic;">Keine weiteren Admins.</div>':''}
+      </div>
+      <input class="settings-input" id="new-admin-user" placeholder="Neuer Admin-Benutzername" style="width:100%;margin-bottom:6px;">
+      <input class="settings-input" type="password" id="new-admin-pass" placeholder="Passwort" style="width:100%;margin-bottom:8px;">
+      <button class="settings-save" style="background:var(--accent2);margin:0;" onclick="addAdminAccount()">➕ Admin hinzufügen</button>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">🚫 Gesperrte User</div>
+      <div style="margin-bottom:10px;">
+        ${(data.bannedUsers||[]).length===0?'<div style="font-size:11px;color:var(--muted);font-style:italic;">Keine gesperrten User.</div>':
+          (data.bannedUsers||[]).map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border2);font-size:12px;">
+            <span style="color:var(--danger);">🚫 ${u}</span>
+            <button class="edit-btn" onclick="unbanUser('${u}');renderSettings();" style="font-size:10px;">✅ Entsperren</button>
+          </div>`).join('')}
+      </div>
+      <div style="font-size:10px;color:var(--muted);">User sperren: Im Forum auf den Post des Users klicken → 🚫 Button</div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">💾 Backup</div>
+      <div style="display:flex;gap:8px;">
+        <button class="settings-save" style="flex:1;margin:0;" onclick="exportBackup()">📤 Exportieren</button>
+        <button class="settings-save" style="flex:1;margin:0;background:var(--accent2);" onclick="importBackup()">📥 Importieren</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <button class="settings-save" style="margin:0;background:transparent;border:1px solid var(--border2);color:var(--text2);" onclick="showShortcutHints()">⌨️ Tastenkürzel anzeigen</button>
+    </div>
     <button class="settings-save" onclick="saveSettings()">💾 SPEICHERN</button>`;
 }
+function changeUserPassword(){
+  const oldP = document.getElementById('pw-old').value;
+  const newP = document.getElementById('pw-new').value;
+  const newP2 = document.getElementById('pw-new2').value;
+  const user = data.users.find(u=>u.name===currentUser);
+  if(!user){showNotif('❌','Fehler','Benutzer nicht gefunden.','error');return;}
+  if(user.pass!==oldP){showNotif('❌','Fehler','Aktuelles Passwort falsch.','error');return;}
+  if(newP.length<4){showNotif('⚠️','Fehler','Neues Passwort mindestens 4 Zeichen.','warn');return;}
+  if(newP!==newP2){showNotif('⚠️','Fehler','Passwörter stimmen nicht überein.','warn');return;}
+  user.pass=newP;
+  save();
+  showNotif('🔑','Passwort geändert','Dein Passwort wurde erfolgreich aktualisiert.','success');
+  renderSettings();
+}
+
 function deleteUserAccount(){
   if(!confirm('Konto wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
   data.users = data.users.filter(u=>u.name!==currentUser);
   save();
   logout();
+}
+function addAdminAccount(){
+  const u=document.getElementById('new-admin-user').value.trim();
+  const p=document.getElementById('new-admin-pass').value;
+  if(!u||!p){showNotif('⚠️','Fehler','Name und Passwort erforderlich.','warn');return;}
+  if(u===data.adminUser){showNotif('⚠️','Fehler','Das ist bereits der Haupt-Admin.','warn');return;}
+  if((data.admins||[]).find(a=>a.name===u)){showNotif('⚠️','Fehler','Admin-Name bereits vergeben.','warn');return;}
+  if(!data.admins) data.admins=[];
+  data.admins.push({name:u,pass:p});
+  save(); renderSettings();
+  showNotif('🔑','Admin hinzugefügt','<strong>'+u+'</strong> ist jetzt Admin.','success');
+}
+function deleteAdminAccount(idx){
+  if(!confirm('Admin-Konto löschen?'))return;
+  data.admins.splice(idx,1);
+  save();
 }
 function saveSettings(){
   data.siteName=document.getElementById('set-name').value.trim()||data.siteName;
@@ -2395,15 +2681,31 @@ function renderForums(){
     const cat = data.forums.categories[activeCategoryIdx];
     const html = `<div onclick="selectForumCategory(null)" style="padding:10px 20px;background:var(--bg3);border-bottom:1px solid var(--border);cursor:pointer;color:var(--muted);font-size:12px;">◀ Zurück zu Kategorien</div>
       <div style="padding:15px 20px;border-bottom:1px solid var(--border);">${isUser||isAdmin?`<button class="news-add-btn" onclick="openForumPostModal()" style="border-color:rgba(0,255,136,0.35);color:var(--success);">＋ Post erstellen</button>`:'<div style="font-size:12px;color:var(--muted);">📝 Anmelden um Posts zu erstellen</div>'}</div>
-      <div class="forum-posts">${cat.posts.length?cat.posts.map((p,i)=>`
-        <div class="forum-post">
-          <div class="forum-post-user">${p.user}</div>
-          <div class="forum-post-time">${p.date}</div>
+      <div class="forum-posts">${cat.posts.length?cat.posts.map((p,i)=>{
+        const rank=getUserRank(p.user);
+        const isBanned=(data.bannedUsers||[]).includes(p.user);
+        if(isBanned&&!isAdmin) return '';
+        const userReacted=(p.reactions||{});
+        const EMOJIS=['👍','❤️','😂','😮','😢'];
+        const reactBtns=EMOJIS.map(e=>{
+          const count=(userReacted[e]||[]).length;
+          const myReact=(userReacted[e]||[]).includes(currentUser);
+          return count>0||isUser?`<button class="reaction-btn${myReact?' reacted':''}" onclick="reactPost(${i},'${e}')">${e}${count>0?' '+count:''}</button>`:'';
+        }).join('');
+        return `<div class="forum-post" id="fp-${activeCategoryIdx}-${i}">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+            <span class="forum-post-user">${isBanned?'[Gesperrt]':p.user}</span>
+            <span class="rank-badge ${rank.cls}">${rank.icon} ${rank.label}</span>
+            <span class="forum-post-time" style="margin-left:auto;">${p.date}</span>
+          </div>
           <div class="forum-post-body">${p.body}</div>
-          ${isAdmin?`<div class="edit-actions" style="margin-top:8px;">
-            <button class="edit-btn del" onclick="deleteForumPost(${i})">🗑️ Löschen</button>
-          </div>`:''}
-        </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;font-style:italic;">Noch keine Posts in dieser Kategorie.</div>'}</div>`;
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;">
+            ${isUser||isAdmin?`<div class="reactions">${reactBtns}</div>`:''}
+            <button class="copy-btn" onclick="copyToClipboard('${p.body.replace(/'/g,"\\'")}')">📋 Kopieren</button>
+            ${(isAdmin||(isUser&&p.user===currentUser))?`<button class="edit-btn del" style="margin-left:auto;" onclick="deleteForumPost(${i})">🗑️</button>${isAdmin&&p.user!==currentUser?`<button class="edit-btn del" onclick="banUser('${p.user}')" title="User sperren">🚫</button>`:''}`:''}
+          </div>
+        </div>`;
+      }).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;font-style:italic;">Noch keine Posts in dieser Kategorie.</div>'}</div>`;
     container.innerHTML = html;
   }
 }
@@ -2474,6 +2776,45 @@ function saveForumPost(){
   cat.posts.push({user:currentUser||'Gast',body,date:new Date().toLocaleDateString('de-DE')});
   save(); renderForums(); closeModal();
 }
+function reactPost(postIdx, emoji){
+  if(!isUser&&!isAdmin){showNotif('⚠️','Anmelden','Melde dich an um zu reagieren.','warn');return;}
+  const cat=data.forums.categories[activeCategoryIdx];
+  const post=cat.posts[postIdx];
+  if(!post.reactions) post.reactions={};
+  if(!post.reactions[emoji]) post.reactions[emoji]=[];
+  const arr=post.reactions[emoji];
+  const idx=arr.indexOf(currentUser);
+  if(idx>=0) arr.splice(idx,1); else arr.push(currentUser);
+  save(); renderForums();
+}
+
+function copyToClipboard(text){
+  navigator.clipboard.writeText(text).then(()=>{
+    showNotif('📋','Kopiert!','Text in die Zwischenablage kopiert.','success');
+  }).catch(()=>{
+    showNotif('❌','Fehler','Kopieren fehlgeschlagen.','error');
+  });
+}
+
+function banUser(username){
+  if(!confirm('User "'+username+'" sperren?')) return;
+  if(!data.bannedUsers) data.bannedUsers=[];
+  if(!data.bannedUsers.includes(username)){
+    data.bannedUsers.push(username);
+    save();
+    showNotif('🚫','User gesperrt','<strong>'+username+'</strong> wurde gesperrt.','warn');
+    renderForums(); renderSupportTickets();
+  }
+}
+
+function unbanUser(username){
+  if(!data.bannedUsers) return;
+  data.bannedUsers=data.bannedUsers.filter(u=>u!==username);
+  save();
+  showNotif('✅','User entsperrt','<strong>'+username+'</strong> wurde entsperrt.','success');
+  renderSettings();
+}
+
 function deleteForumPost(idx){
   if(!confirm('Post löschen?')) return;
   const cat = data.forums.categories[activeCategoryIdx];
@@ -2488,24 +2829,34 @@ function renderSupportTickets(){
   else btn.innerHTML = '<div style="font-size:12px;color:var(--muted);">📧 Anmelden um Support zu kontaktieren</div>';
 
   const list = document.getElementById('support-list');
-  if(!data.supportTickets.length){
-    list.innerHTML = '<div style="padding:28px;color:var(--muted);text-align:center;font-size:13px;font-style:italic;">Noch keine Support-Tickets vorhanden.</div>';
+  // Filter: Admin sieht alle, User nur eigene, Gast nichts
+  const visible = isAdmin ? data.supportTickets :
+                  isUser  ? data.supportTickets.filter(t=>t.user===currentUser) : [];
+
+  if(!isUser && !isAdmin){
+    list.innerHTML = '<div style="padding:28px;color:var(--muted);text-align:center;font-size:13px;font-style:italic;">📧 Melde dich an um Support zu kontaktieren.</div>';
     return;
   }
-  list.innerHTML = data.supportTickets.map((t,i)=>`
-    <div class="support-ticket">
+  if(!visible.length){
+    list.innerHTML = '<div style="padding:28px;color:var(--muted);text-align:center;font-size:13px;font-style:italic;">Noch keine Tickets vorhanden.</div>';
+    return;
+  }
+  list.innerHTML = visible.map((t)=>{
+    const i = data.supportTickets.indexOf(t);
+    return `<div class="support-ticket">
       <div class="support-ticket-header">
         <span class="support-ticket-status ${t.status}">${t.status==='open'?'Offen':'Geschlossen'}</span>
         <span class="support-ticket-title">${t.title}</span>
       </div>
-      <div class="support-ticket-user">Von: <strong>${t.user}</strong></div>
+      ${isAdmin?`<div class="support-ticket-user">Von: <strong>${t.user}</strong></div>`:''}
       <div class="support-ticket-body">${t.body}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:8px;">Erstellt: ${t.date}</div>
       ${isAdmin?`<div class="support-ticket-actions">
         <button class="edit-btn" onclick="toggleTicketStatus(${i})" style="border-color:rgba(0,229,255,0.3);color:var(--accent);">✓ ${t.status==='open'?'Schließen':'Öffnen'}</button>
         <button class="edit-btn del" onclick="deleteTicket(${i})">🗑️ Löschen</button>
       </div>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 function openSupportModal(){
   const m = document.createElement('div');
@@ -2613,40 +2964,7 @@ function dismissNotif(el){
 }
 
 // ====== ONLINE USERS BAR ======
-let onlineBarOpen = false;
-const ONLINE_NAMES = ['CoolGamer92','ProPlayer','EventMaster','HelpWanted','NexusUser'];
-function toggleOnlineBar(){
-  onlineBarOpen = !onlineBarOpen;
-  document.getElementById('online-bar').classList.toggle('show', onlineBarOpen);
-  if(onlineBarOpen) renderOnlineBar();
-}
-function updateOnlineStatus(selfJoined){
-  // Add current user to fake online list
-  renderOnlineBar();
-  const count = getOnlineCount();
-  document.getElementById('online-count-label').textContent = count+' Online';
-}
-function getOnlineCount(){
-  let base = 2 + Math.floor(Math.random()*3);
-  if(isUser||isAdmin) base++;
-  return base;
-}
-function renderOnlineBar(){
-  const list = document.getElementById('online-users-list');
-  let users = [];
-  if(isUser && currentUser) users.push({name:currentUser, avatar:getUserAvatar(currentUser), self:true});
-  if(isAdmin) users.push({name:data.adminUser||'admin', avatar:null, self:true});
-  // Add some fake online users
-  const extras = ONLINE_NAMES.filter(n=>n!==currentUser).slice(0,3);
-  extras.forEach(n=>users.push({name:n,avatar:null}));
-  list.innerHTML = users.map(u=>`
-    <div class="online-user-row">
-      <div class="online-dot"></div>
-      <div class="online-avatar">${u.avatar?`<img src="${u.avatar}">`:'👤'}</div>
-      <div class="online-uname">${u.name}${u.self?' <span style="font-size:9px;color:var(--accent);opacity:0.7;">(Du)</span>':''}</div>
-    </div>`).join('');
-  document.getElementById('online-count-label').textContent = users.length+' Online';
-}
+// Online-System entfernt
 
 // ====== AVATAR ======
 function getUserAvatar(username){
@@ -2663,7 +2981,7 @@ function updateTaskbarAvatar(avatarUrl){
   }
 }
 function openProfileModal(){
-  if(!isUser && !isAdmin) return;
+  if(!isUser && !isAdmin){ showLoginOverlay(); return; }
   const user = data.users.find(u=>u.name===currentUser);
   const currentAvatar = user ? user.avatar : null;
   const m = document.createElement('div');
@@ -2749,7 +3067,90 @@ function closeLaunchOverlay(){
 }
 
 // ====== INIT ======
-applyBranding(); renderImpressumContent(); renderForums(); renderSupportTickets();
+applyBranding(); applyWallpaper(); renderImpressumContent(); renderForums(); renderSupportTickets(); renderApps();
+
+// ====== KEYBOARD SHORTCUTS ======
+document.addEventListener('keydown', e=>{
+  // Don't trigger when typing in inputs
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(e.ctrlKey||e.metaKey){
+    switch(e.key){
+      case '1': e.preventDefault(); openWindow('win-news'); focusWindow('win-news'); break;
+      case '2': e.preventDefault(); openWindow('win-games'); focusWindow('win-games'); break;
+      case '3': e.preventDefault(); openWindow('win-apps'); focusWindow('win-apps'); break;
+      case '4': e.preventDefault(); openWindow('win-forums'); focusWindow('win-forums'); break;
+      case '5': e.preventDefault(); openWindow('win-support'); focusWindow('win-support'); break;
+      case '6': e.preventDefault(); openWindow('win-settings'); focusWindow('win-settings'); break;
+      case 'w': e.preventDefault();
+        // Close focused window
+        const focused=document.querySelector('.window.focused');
+        if(focused) closeWindow(focused.id);
+        break;
+    }
+  }
+  if(e.key==='Escape'){
+    // Close topmost modal
+    const modal=document.getElementById('active-modal');
+    if(modal){closeModal();return;}
+    // Close game detail
+    const gd=document.getElementById('game-detail-overlay');
+    if(gd&&gd.classList.contains('show')){closeGameDetail();return;}
+  }
+});
+
+// ====== SHORTCUT HINTS ======
+function showShortcutHints(){
+  const hints=[
+    ['Strg+1','News öffnen'],['Strg+2','Games öffnen'],['Strg+3','Apps öffnen'],
+    ['Strg+4','Forum öffnen'],['Strg+5','Support öffnen'],['Strg+6','Einstellungen'],
+    ['Strg+W','Fenster schließen'],['Esc','Modal schließen'],
+  ];
+  const m=document.createElement('div'); m.className='modal-overlay'; m.id='active-modal';
+  m.innerHTML=`<div class="modal-box" style="max-width:360px;">
+    <div class="modal-title">⌨️ Tastenkürzel</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+      ${hints.map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+        <span style="color:var(--text2);">${v}</span><span class="kbd">${k}</span>
+      </div>`).join('')}
+    </div>
+    <div class="modal-actions"><button class="btn-save" onclick="closeModal()">Schließen</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{if(e.target===m)closeModal();});
+}
+
+// ====== BACKUP ======
+function exportBackup(){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='nexus_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  showNotif('💾','Backup erstellt','Daten als JSON heruntergeladen.','success');
+}
+function importBackup(){
+  const input=document.createElement('input');
+  input.type='file'; input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const imported=JSON.parse(ev.target.result);
+        if(!imported.siteName||!imported.users) throw new Error('Ungültiges Format');
+        if(!confirm('Backup importieren? Aktuelle Daten werden überschrieben!')) return;
+        Object.assign(data,imported);
+        save();
+        renderNews(); renderGames(); renderApps(); renderForums(); renderSupportTickets(); applyBranding(); applyWallpaper();
+        showNotif('📂','Backup importiert','Daten erfolgreich wiederhergestellt.','success');
+      }catch(err){
+        showNotif('❌','Fehler','Ungültige Backup-Datei.','error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
 
 // Desktop icon single-click handler
 document.querySelectorAll('.d-icon').forEach(icon=>{
